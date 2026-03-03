@@ -1,0 +1,54 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+build/
+
+# Variables de entorno (NUNCA versionar)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# TypeScript cache
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cursor / Claude / Qodo (herramientas locales)
+.cursor/
+.qodo/
+.claude/
+
+# NestJS
+backend/dist/
+
+# Vite
+frontend/dist/
+
+# Coverage
+coverage/
+**/coverage/
+
+# PM2
+ecosystem.config.js.log

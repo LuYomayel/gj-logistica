@@ -1,0 +1,10 @@
+/* box-sizing global — reemplaza el preflight de Tailwind (deshabilitado para compatibilidad con PrimeReact) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

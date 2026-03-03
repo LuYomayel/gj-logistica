@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Pedido Validado</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>Pedido validado: {{ref}}</h2>
+  <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
+    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Referencia</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{ref}}</td></tr>
+    {{#if totalTTC}}<tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Total</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{totalTTC}}</td></tr>{{/if}}
+    {{#if orderDate}}<tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fecha pedido</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{orderDate}}</td></tr>{{/if}}
+    {{#if deliveryDate}}<tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fecha entrega</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{deliveryDate}}</td></tr>{{/if}}
+  </table>
+  <p style="margin-top: 24px; color: #666; font-size: 12px;">Deposito ERP — notificación automática</p>
+</body>
+</html>

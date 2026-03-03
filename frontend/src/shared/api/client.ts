@@ -1,0 +1,55 @@
+import axios from 'axios';
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('gj_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (r) => {
+    // 1. Unwrap TransformInterceptor: { data: X, statusCode } → X
+    if (
+      r.data &&
+      typeof r.data === 'object' &&
+      !Array.isArray(r.data) &&
+      'data' in r.data &&
+      'statusCode' in r.data
+    ) {
+      r.data = r.data.data;
+    }
+
+    // 2. Normalizar paginación del backend: { items: T[], total, page, limit } → { data: T[], total, page, limit }
+    if (
+      r.data &&
+      typeof r.data === 'object' &&
+      !Array.isArray(r.data) &&
+      'items' in r.data &&
+      'total' in r.data
+    ) {
+      const { items, ...rest } = r.data as { items: unknown[]; [k: string]: unknown };
+      r.data = { data: items, ...rest };
+    }
+
+    // 3. Si el backend devuelve una lista plana, la envolvemos como paginación completa
+    if (Array.isArray(r.data)) {
+      const arr = r.data as unknown[];
+      r.data = { data: arr, total: arr.length, page: 1, limit: arr.length };
+    }
+
+    return r;
+  },
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('gj_token');
+      localStorage.removeItem('gj_user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(err);
+  },
+);

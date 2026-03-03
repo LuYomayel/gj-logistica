@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Pedido Despachado</title></head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <h2>Pedido despachado: {{ref}}</h2>
+  <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
+    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Referencia</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{ref}}</td></tr>
+    {{#if nroSeguimiento}}<tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Nro. Seguimiento</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{nroSeguimiento}}</td></tr>{{/if}}
+    {{#if agencia}}<tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Agencia</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{agencia}}</td></tr>{{/if}}
+    {{#if deliveryDate}}<tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fecha entrega</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{{deliveryDate}}</td></tr>{{/if}}
+  </table>
+  <p style="margin-top: 24px; color: #666; font-size: 12px;">Deposito ERP — notificación automática</p>
+</body>
+</html>
