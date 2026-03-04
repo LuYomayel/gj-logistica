@@ -81,7 +81,7 @@ describe('InventoriesService', () => {
       };
       mockInventoryRepo.createQueryBuilder.mockReturnValue(mockQB);
 
-      const result = await service.findAll({ page: 1, limit: 20 });
+      const result = await service.findAll({ page: 1, limit: 20 }, null);
       expect(result.total).toBe(1);
       expect(result.items).toHaveLength(1);
     });
@@ -115,7 +115,7 @@ describe('InventoriesService', () => {
       mockInventoryRepo.create.mockReturnValue(created);
       mockInventoryRepo.save.mockResolvedValue(created);
 
-      const result = await service.create(dto, 5);
+      const result = await service.create(dto, 5, null);
       expect(result.status).toBe(0);
       expect(mockInventoryRepo.save).toHaveBeenCalledWith(created);
     });

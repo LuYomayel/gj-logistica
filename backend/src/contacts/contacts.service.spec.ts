@@ -72,14 +72,14 @@ describe('ContactsService', () => {
         firstName: 'Maria',
         lastName: 'Garcia',
         dni: 30123456,
-      });
+      }, null);
       expect(result.firstName).toBe('Maria');
     });
 
     it('should throw ConflictException if DNI already exists', async () => {
       repo.findOne.mockResolvedValue(mockContact as Contact); // DNI taken
       await expect(
-        service.create({ firstName: 'Otro', lastName: 'Apellido', dni: 30123456 }),
+        service.create({ firstName: 'Otro', lastName: 'Apellido', dni: 30123456 }, null),
       ).rejects.toThrow(ConflictException);
     });
   });

@@ -1,6 +1,6 @@
 import {
   IsString, IsEmail, IsOptional, IsBoolean,
-  IsInt, MinLength, MaxLength,
+  IsInt, MinLength, MaxLength, IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -40,6 +40,16 @@ export class CreateUserDto {
   @IsBoolean({ message: 'El campo admin debe ser verdadero o falso' })
   @IsOptional()
   isAdmin?: boolean;
+
+  @ApiPropertyOptional({ enum: ['super_admin', 'client_admin', 'client_user'] })
+  @IsIn(['super_admin', 'client_admin', 'client_user'])
+  @IsOptional()
+  userType?: 'super_admin' | 'client_admin' | 'client_user';
+
+  @ApiPropertyOptional({ description: 'Tenant ID (columna entity)' })
+  @IsInt()
+  @IsOptional()
+  entity?: number;
 
   @ApiPropertyOptional()
   @IsInt({ message: 'El ID del supervisor debe ser un entero' })

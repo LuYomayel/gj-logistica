@@ -46,7 +46,7 @@ describe('WarehousesService', () => {
   describe('findAll', () => {
     it('should return active warehouses', async () => {
       repo.find.mockResolvedValue([mockWarehouse]);
-      const result = await service.findAll();
+      const result = await service.findAll(null);
       expect(result[0].name).toBe('Almacen general');
     });
   });

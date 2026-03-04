@@ -8,26 +8,24 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RolesGuard } from './guards/roles.guard';
+import { PermissionsGuard } from './guards/permissions.guard';
 import { User } from '../entities/user.entity';
-import { UserGroupMembership } from '../entities/user-group-membership.entity';
-import { Group } from '../entities/group.entity';
 
 @Module({
   imports: [
     PassportModule,
-    TypeOrmModule.forFeature([User, UserGroupMembership, Group]),
+    TypeOrmModule.forFeature([User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET', 'default-secret'),
-        signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN', '7d') as any },
+        signOptions: { expiresIn: (config.get<string>('JWT_EXPIRES_IN', '7d') ?? '7d') as never },
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, JwtAuthGuard, RolesGuard],
-  exports: [AuthService, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, JwtStrategy, LocalStrategy, JwtAuthGuard, PermissionsGuard],
+  exports: [AuthService, JwtAuthGuard, PermissionsGuard],
 })
 export class AuthModule {}

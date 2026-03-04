@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { warehousesApi } from '../api/warehousesApi';
 import { stockApi } from '../../stock/api/stockApi';
 import { StockCorrectionDialog } from './StockCorrectionDialog';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { ProductStock, StockMovement } from '../../../shared/types';
 
 interface InfoRowProps { label: string; value: string | number | null | undefined }
@@ -27,6 +28,7 @@ interface Props { id: number }
 
 export function WarehouseDetail({ id }: Props) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [stockSearch, setStockSearch] = useState('');
   const [movPage, setMovPage] = useState(1);
   const [showCorrection, setShowCorrection] = useState(false);
@@ -119,14 +121,16 @@ export function WarehouseDetail({ id }: Props) {
               severity={warehouse.status === 1 ? 'success' : 'danger'}
             />
           </div>
-          <Button
-            label="Corrección Stock"
-            icon="pi pi-sliders-h"
-            outlined
-            severity="secondary"
-            onClick={() => { setCorrectionProduct(undefined); setShowCorrection(true); }}
-            className="px-4 py-2"
-          />
+          {hasPermission('stock.write_movements') && (
+            <Button
+              label="Corrección Stock"
+              icon="pi pi-sliders-h"
+              outlined
+              severity="secondary"
+              onClick={() => { setCorrectionProduct(undefined); setShowCorrection(true); }}
+              className="px-4 py-2"
+            />
+          )}
         </div>
 
         {/* Info + stats */}
@@ -207,7 +211,7 @@ export function WarehouseDetail({ id }: Props) {
                   <Column
                     header=""
                     style={{ width: '140px' }}
-                    body={(row: ProductStock) => (
+                    body={(row: ProductStock) => !hasPermission('stock.write_movements') ? null : (
                       <Button
                         label="Corrección"
                         icon="pi pi-sliders-h"

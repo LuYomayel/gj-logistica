@@ -16,6 +16,7 @@ const mockUser: Partial<User> = {
   email: 'juan@test.com',
   status: 1,
   isAdmin: false,
+  userType: 'client_user' as const,
   entity: 1,
 };
 
@@ -52,7 +53,7 @@ describe('UsersService', () => {
   describe('findAll', () => {
     it('should return an array of users', async () => {
       userRepo.find.mockResolvedValue([mockUser as User]);
-      const result = await service.findAll();
+      const result = await service.findAll(null);
       expect(result).toHaveLength(1);
       expect(result[0].username).toBe('jperez');
     });
@@ -83,7 +84,7 @@ describe('UsersService', () => {
         password: 'pass123',
         firstName: 'Nuevo',
         lastName: 'Usuario',
-      });
+      }, null);
 
       expect(result).toBeDefined();
       expect(userRepo.save).toHaveBeenCalled();
@@ -92,7 +93,7 @@ describe('UsersService', () => {
     it('should throw ConflictException if username already exists', async () => {
       userRepo.findOne.mockResolvedValue(mockUser as User);
       await expect(
-        service.create({ username: 'jperez', password: 'pass123' }),
+        service.create({ username: 'jperez', password: 'pass123' }, null),
       ).rejects.toThrow(ConflictException);
     });
   });

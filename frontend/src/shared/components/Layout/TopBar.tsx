@@ -2,8 +2,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { useAuth } from '../../hooks/useAuth';
 
+interface TopNavItem {
+  label: string;
+  to: string;
+  permission?: string;
+}
+
+const TOP_NAV: TopNavItem[] = [
+  { label: 'Inicio', to: '/' },
+  { label: 'Terceros', to: '/contacts', permission: 'contacts.read' },
+  { label: 'Productos', to: '/products', permission: 'products.read' },
+  { label: 'Pedidos', to: '/orders', permission: 'orders.read' },
+  { label: 'Usuarios', to: '/users', permission: 'users.read' },
+];
+
 export function TopBar() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -25,41 +39,22 @@ export function TopBar() {
       {/* Separator */}
       <div className="w-px h-6 bg-white/20 shrink-0" />
 
-      {/* Top nav */}
+      {/* Top nav — filtered by permission */}
       <nav className="flex items-center gap-0.5 text-sm">
-        <Link
-          to="/"
-          className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
-        >
-          Inicio
-        </Link>
-        <Link
-          to="/contacts"
-          className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
-        >
-          Terceros
-        </Link>
-        <Link
-          to="/products"
-          className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
-        >
-          Productos
-        </Link>
-        <Link
-          to="/orders"
-          className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
-        >
-          Comercio
-        </Link>
-        <Link
-          to="/users"
-          className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
-        >
-          Utilidades
-        </Link>
+        {TOP_NAV.filter((item) =>
+          !item.permission ? true : hasPermission(item.permission),
+        ).map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
+          >
+            {item.label}
+          </Link>
+        ))}
       </nav>
 
-      {/* Right: user + logout */}
+      {/* Right: user info + logout */}
       <div className="ml-auto flex items-center gap-2 text-sm text-white/90 shrink-0">
         <div className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1">
           <i className="pi pi-user text-sm" />

@@ -54,7 +54,7 @@ describe('ThirdPartiesService', () => {
   describe('findAll', () => {
     it('should return active third parties', async () => {
       repo.find.mockResolvedValue([mockTP as ThirdParty]);
-      const result = await service.findAll();
+      const result = await service.findAll(null);
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('Corteva');
     });
@@ -78,7 +78,7 @@ describe('ThirdPartiesService', () => {
       repo.create.mockReturnValue(mockTP as ThirdParty);
       repo.save.mockResolvedValue(mockTP as ThirdParty);
 
-      const result = await service.create({ name: 'Corteva' });
+      const result = await service.create({ name: 'Corteva' }, null);
       expect(result.name).toBe('Corteva');
     });
   });

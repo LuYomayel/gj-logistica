@@ -5,7 +5,9 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ThirdPartiesService, UpdateThirdPartyDto } from './third-parties.service';
 import { CreateThirdPartyDto } from './dto/create-third-party.dto';
-import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('third-parties')
 @ApiBearerAuth()
@@ -14,26 +16,33 @@ export class ThirdPartiesController {
   constructor(private readonly service: ThirdPartiesService) {}
 
   @Get()
+  @RequiresPermission('third_parties.read')
   @ApiOperation({ summary: 'Listar empresas' })
-  findAll() {
-    return this.service.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.findAll(user.tenantId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle empresa' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findOne(id, user.tenantId);
   }
 
   @Post()
-  @Roles('admin', 'comercial', 'comunicacion')
+  @RequiresPermission('third_parties.write')
   @ApiOperation({ summary: 'Crear empresa' })
-  create(@Body() dto: CreateThirdPartyDto) {
-    return this.service.create(dto);
+  create(
+    @Body() dto: CreateThirdPartyDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.create(dto, user.tenantId);
   }
 
   @Patch(':id')
-  @Roles('admin', 'comercial', 'comunicacion')
+  @RequiresPermission('third_parties.write')
   @ApiOperation({ summary: 'Actualizar empresa' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<UpdateThirdPartyDto>) {
     return this.service.update(id, dto);
@@ -46,7 +55,7 @@ export class ThirdPartiesController {
   }
 
   @Post(':id/sales-reps')
-  @Roles('admin')
+  @RequiresPermission('third_parties.write')
   @ApiOperation({ summary: 'Asignar vendedor' })
   addSalesRep(
     @Param('id', ParseIntPipe) id: number,
@@ -56,7 +65,7 @@ export class ThirdPartiesController {
   }
 
   @Delete(':id/sales-reps/:userId')
-  @Roles('admin')
+  @RequiresPermission('third_parties.write')
   @ApiOperation({ summary: 'Quitar vendedor' })
   removeSalesRep(
     @Param('id', ParseIntPipe) id: number,

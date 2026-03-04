@@ -5,7 +5,8 @@ import {
   CreateStockMovementDto, FilterMovementsDto, TransferStockDto, StockAtDateDto,
 } from './dto/create-stock-movement.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('stock')
 @ApiBearerAuth()
@@ -14,9 +15,13 @@ export class StockController {
   constructor(private readonly service: StockService) {}
 
   @Get('movements')
+  @RequiresPermission('stock.read')
   @ApiOperation({ summary: 'Listar movimientos de stock' })
-  findMovements(@Query() filter: FilterMovementsDto) {
-    return this.service.findMovements(filter);
+  findMovements(
+    @Query() filter: FilterMovementsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findMovements(filter, user.tenantId);
   }
 
   @Get('movements/product/:productId')
@@ -26,23 +31,23 @@ export class StockController {
   }
 
   @Post('movements')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_movements')
   @ApiOperation({ summary: 'Corrección manual de stock' })
   createMovement(
     @Body() dto: CreateStockMovementDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.createManualMovement(dto, user.id);
+    return this.service.createManualMovement(dto, user.id, user.tenantId);
   }
 
   @Post('transfer')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_movements')
   @ApiOperation({ summary: 'Transferir stock entre almacenes' })
   transfer(
     @Body() dto: TransferStockDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.transferStock(dto, user.id);
+    return this.service.transferStock(dto, user.id, user.tenantId);
   }
 
   @Get('at-date')

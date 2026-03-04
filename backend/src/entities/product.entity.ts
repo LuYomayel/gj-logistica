@@ -1,15 +1,16 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn,
+  CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Unique,
 } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('products')
+@Unique('UQ_product_ref_entity', ['ref', 'entity'])
 export class Product {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 128, unique: true })
+  @Column({ type: 'varchar', length: 128 })
   ref: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

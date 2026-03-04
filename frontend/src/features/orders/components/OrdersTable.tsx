@@ -8,10 +8,12 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Skeleton } from "primereact/skeleton";
+import { Tooltip } from "primereact/tooltip";
 import { ordersApi, type OrderFilters } from "../api/ordersApi";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { CreateOrderDialog } from "./CreateOrderDialog";
 import { ExportOrdersDialog } from "./ExportOrdersDialog";
+import { useAuth } from "../../../shared/hooks/useAuth";
 import type { Order } from "../../../shared/types";
 
 const STATUS_OPTIONS = [
@@ -25,6 +27,7 @@ const STATUS_OPTIONS = [
 
 export function OrdersTable() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [filters, setFilters] = useState<OrderFilters>({ page: 1, limit: 20 });
   const [refInput, setRefInput] = useState("");
   const [statusInput, setStatusInput] = useState<number | string>("");
@@ -89,20 +92,24 @@ export function OrdersTable() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            label="Exportar CSV"
-            icon="pi pi-download"
-            outlined
-            severity="secondary"
-            onClick={() => setShowExport(true)}
-            className="px-4 py-2"
-          />
-          <Button
-            label="Nueva Orden"
-            icon="pi pi-plus"
-            onClick={() => setShowCreate(true)}
-            className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
-          />
+          {hasPermission('orders.export') && (
+            <Button
+              label="Exportar CSV"
+              icon="pi pi-download"
+              outlined
+              severity="secondary"
+              onClick={() => setShowExport(true)}
+              className="px-4 py-2"
+            />
+          )}
+          {hasPermission('orders.write') && (
+            <Button
+              label="Nueva Orden"
+              icon="pi pi-plus"
+              onClick={() => setShowCreate(true)}
+              className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
+            />
+          )}
         </div>
       </div>
 
@@ -216,6 +223,29 @@ export function OrdersTable() {
                   row.createdBy.username
                 : "-"
             }
+          />
+          <Column
+            header=""
+            style={{ width: "50px", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
+            body={(row: Order) => {
+              if (row.status < 1) return null;
+              return (
+                <>
+                  <Tooltip target={`.pdf-btn-${row.id}`} content="Descargar PDF" position="left" />
+                  <Button
+                    icon="pi pi-file-pdf"
+                    text
+                    size="small"
+                    className={`pdf-btn-${row.id} text-gray-500 hover:text-blue-600 p-1`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void ordersApi.downloadPdf(row.id, row.ref);
+                    }}
+                  />
+                </>
+              );
+            }}
           />
         </DataTable>
       </div>

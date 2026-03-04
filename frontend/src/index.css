@@ -1,4 +1,15 @@
-/* box-sizing global — reemplaza el preflight de Tailwind (deshabilitado para compatibilidad con PrimeReact) */
+/*
+ * PrimeReact + Tailwind CSS — Tailwind v3
+ *
+ * Preflight está DESHABILITADO en tailwind.config.js porque Tailwind v3 lo
+ * genera como CSS sin capa (unlayered), lo que sobrescribe "@layer primereact".
+ * En Tailwind v4, el preflight irá en "@layer base" y layer-order.css lo resolverá.
+ *
+ * Las utility classes (p-4, flex, text-blue-500, etc.) siguen funcionando.
+ * El box-sizing: border-box se aplica manualmente aquí como reemplazo mínimo.
+ */
+
+/* Reset mínimo: reemplaza lo esencial del preflight deshabilitado */
 *,
 *::before,
 *::after {

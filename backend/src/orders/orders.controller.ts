@@ -9,53 +9,88 @@ import { CreateOrderDto, AddOrderLineDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { FilterOrderDto, OrderStatsDto } from './dto/filter-order.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import { PdfService } from '../notifications/pdf.service';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('orders')
 @ApiBearerAuth()
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly service: OrdersService) {}
+  constructor(
+    private readonly service: OrdersService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   @Get()
+  @RequiresPermission('orders.read')
   @ApiOperation({ summary: 'Listar pedidos (paginado, filtros)' })
-  findAll(@Query() filter: FilterOrderDto) {
-    return this.service.findAll(filter);
+  findAll(
+    @Query() filter: FilterOrderDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findAll(filter, user.tenantId);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Estadísticas de pedidos: por mes/año y por estado' })
-  getStats(@Query() filter: OrderStatsDto) {
-    return this.service.getStats(filter);
+  getStats(
+    @Query() filter: OrderStatsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.getStats(filter, user.tenantId);
   }
 
   @Get('export')
+  @RequiresPermission('orders.export')
   @ApiOperation({ summary: 'Exportar pedidos como CSV (con líneas)' })
-  async exportCsv(@Query() filter: FilterOrderDto, @Res() res: Response) {
-    const csv = await this.service.exportCsv(filter);
+  async exportCsv(
+    @Query() filter: FilterOrderDto,
+    @Res() res: Response,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const csv = await this.service.exportCsv(filter, user.tenantId);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="pedidos.csv"');
     res.send('\uFEFF' + csv); // BOM prefix for Excel UTF-8 compatibility
   }
 
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Descargar PDF del pedido (disponible desde status=1)' })
+  async downloadPdf(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const order = await this.service.findOne(id, user.tenantId);
+    const buffer = await this.pdfService.generateOrderPdf(order);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${order.ref}.pdf"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener pedido por ID con líneas' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findOne(id, user.tenantId);
   }
 
   @Post()
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Crear pedido en borrador' })
   create(
     @Body() dto: CreateOrderDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.create(dto, user.id);
+    return this.service.create(dto, user.id, user.tenantId);
   }
 
   @Patch(':id')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Editar pedido borrador' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -65,7 +100,7 @@ export class OrdersController {
   }
 
   @Post(':id/lines')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Agregar línea a pedido borrador' })
   addLine(
     @Param('id', ParseIntPipe) id: number,
@@ -75,7 +110,7 @@ export class OrdersController {
   }
 
   @Patch(':id/lines/:lineId/remove')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Eliminar línea de pedido borrador' })
   removeLine(
     @Param('id', ParseIntPipe) id: number,
@@ -85,29 +120,29 @@ export class OrdersController {
   }
 
   @Post(':id/validate')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.validate')
   @ApiOperation({ summary: 'Validar pedido (descuenta stock, genera ref SOyymm-nnnn)' })
   @HttpCode(HttpStatus.OK)
   validateOrder(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.validateOrder(id, user.id);
   }
 
   @Post(':id/cancel')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.cancel')
   @ApiOperation({ summary: 'Cancelar pedido (revierte stock si estaba validado)' })
   @HttpCode(HttpStatus.OK)
   cancelOrder(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.cancelOrder(id, user.id);
   }
 
   @Post(':id/progress')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Pasar pedido a EN PROCESO (status=2)' })
   @HttpCode(HttpStatus.OK)
   progressOrder(@Param('id', ParseIntPipe) id: number) {
@@ -115,7 +150,7 @@ export class OrdersController {
   }
 
   @Post(':id/ship')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.close')
   @ApiOperation({ summary: 'Marcar pedido como DESPACHADO (status=3)' })
   @HttpCode(HttpStatus.OK)
   shipOrder(@Param('id', ParseIntPipe) id: number) {
@@ -123,18 +158,18 @@ export class OrdersController {
   }
 
   @Post(':id/clone')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Clonar pedido como nuevo borrador' })
   @HttpCode(HttpStatus.OK)
   cloneOrder(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.cloneOrder(id, user.id);
+    return this.service.cloneOrder(id, user.id, user.tenantId);
   }
 
   @Post(':id/reopen')
-  @Roles('admin', 'comunicacion', 'comercial')
+  @RequiresPermission('orders.write')
   @ApiOperation({ summary: 'Reabrir pedido cancelado o despachado' })
   @HttpCode(HttpStatus.OK)
   reopenOrder(@Param('id', ParseIntPipe) id: number) {

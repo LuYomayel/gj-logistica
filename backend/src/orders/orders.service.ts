@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, QueryRunner } from 'typeorm';
+import { Repository, DataSource, QueryRunner, FindOptionsWhere } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderLine } from '../entities/order-line.entity';
 import { OrderSequence } from '../entities/order-sequence.entity';
@@ -10,6 +10,7 @@ import { Product } from '../entities/product.entity';
 import { CreateOrderDto, AddOrderLineDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { FilterOrderDto, OrderStatsDto } from './dto/filter-order.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface PaginatedOrders {
   items: Order[];
@@ -40,10 +41,12 @@ export class OrdersService {
   constructor(
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     @InjectRepository(OrderLine) private lineRepo: Repository<OrderLine>,
+    @InjectRepository(ProductStock) private stockRepo: Repository<ProductStock>,
     private dataSource: DataSource,
+    private notificationsService: NotificationsService,
   ) {}
 
-  async findAll(filter: FilterOrderDto): Promise<PaginatedOrders> {
+  async findAll(filter: FilterOrderDto, tenantId: number | null): Promise<PaginatedOrders> {
     const { status, thirdPartyId, warehouseId, isDraft, dateFrom, dateTo, page = 1, limit = 50 } = filter;
 
     const qb = this.orderRepo
@@ -60,21 +63,24 @@ export class OrdersService {
     if (isDraft !== undefined) qb.andWhere('o.isDraft = :isDraft', { isDraft });
     if (dateFrom) qb.andWhere('o.orderDate >= :dateFrom', { dateFrom });
     if (dateTo) qb.andWhere('o.orderDate <= :dateTo', { dateTo });
+    if (tenantId !== null) qb.andWhere('o.entity = :tenantId', { tenantId });
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit };
   }
 
-  async findOne(id: number): Promise<Order> {
+  async findOne(id: number, tenantId?: number | null): Promise<Order> {
+    const where: FindOptionsWhere<Order> = { id };
+    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
     const order = await this.orderRepo.findOne({
-      where: { id },
+      where,
       relations: ['thirdParty', 'lines', 'lines.product', 'warehouse', 'createdBy', 'validatedBy'],
     });
     if (!order) throw new NotFoundException(`Pedido #${id} no encontrado`);
     return order;
   }
 
-  async create(dto: CreateOrderDto, createdByUserId: number): Promise<Order> {
+  async create(dto: CreateOrderDto, createdByUserId: number, tenantId: number | null): Promise<Order> {
     const { lines, ...orderData } = dto;
 
     // Save with a temporary unique ref; will be replaced on validate
@@ -87,6 +93,7 @@ export class OrdersService {
         isDraft: true,
         createdByUserId,
         orderDate: dto.orderDate ?? new Date(),
+        entity: tenantId ?? 1,
       }),
     );
 
@@ -121,6 +128,23 @@ export class OrdersService {
     if (order.status !== 0) {
       throw new BadRequestException('Solo se pueden agregar líneas a pedidos en borrador');
     }
+
+    // ── Stock check: if the order has a warehouse and a product, verify availability ──
+    if (dto.productId && order.warehouseId) {
+      const ps = await this.stockRepo.findOne({
+        where: { warehouseId: order.warehouseId, productId: dto.productId },
+      });
+      const available = ps?.quantity ?? 0;
+      const requestedQty = dto.quantity ?? 1;
+
+      if (available < requestedQty) {
+        throw new BadRequestException(
+          `Stock insuficiente para el producto #${dto.productId}. ` +
+          `Disponible en almacén: ${available}, solicitado: ${requestedQty}`,
+        );
+      }
+    }
+
     const existingLines = await this.lineRepo.find({ where: { orderId } });
     const position = dto.position ?? existingLines.length;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,7 +240,12 @@ export class OrdersService {
       });
 
       await qr.commitTransaction();
-      return this.findOne(id);
+      const validatedOrder = await this.findOne(id);
+
+      // Fire-and-forget: generate PDF + send email after commit (non-blocking)
+      void this.notificationsService.sendOrderEvent('ORDER_VALIDATE', validatedOrder);
+
+      return validatedOrder;
     } catch (e) {
       await qr.rollbackTransaction();
       throw e;
@@ -303,7 +332,12 @@ export class OrdersService {
       throw new BadRequestException('El pedido ya fue despachado');
     }
     await this.orderRepo.update(id, { status: 3 });
-    return this.findOne(id);
+    const shipped = await this.findOne(id);
+
+    // Fire-and-forget: generate PDF + send email (non-blocking)
+    void this.notificationsService.sendOrderEvent('ORDER_CLOSE', shipped);
+
+    return shipped;
   }
 
   /**
@@ -321,7 +355,7 @@ export class OrdersService {
   /**
    * Estadísticas de pedidos: desglose por mes/año y por estado.
    */
-  async getStats(filter: OrderStatsDto): Promise<OrderStatsResult> {
+  async getStats(filter: OrderStatsDto, tenantId: number | null): Promise<OrderStatsResult> {
     const { year, thirdPartyId, status, createdByUserId } = filter;
 
     // ── Por mes/año ────────────────────────────────────────────────────
@@ -339,6 +373,7 @@ export class OrdersService {
     if (thirdPartyId) monthQb.andWhere('o.thirdPartyId = :thirdPartyId', { thirdPartyId });
     if (status !== undefined) monthQb.andWhere('o.status = :status', { status });
     if (createdByUserId) monthQb.andWhere('o.createdByUserId = :createdByUserId', { createdByUserId });
+    if (tenantId !== null) monthQb.andWhere('o.entity = :tenantId', { tenantId });
 
     monthQb
       .groupBy('YEAR(o.orderDate), MONTH(o.orderDate)')
@@ -355,6 +390,7 @@ export class OrdersService {
     if (year) statusQb.andWhere('YEAR(o.orderDate) = :year', { year });
     if (thirdPartyId) statusQb.andWhere('o.thirdPartyId = :thirdPartyId', { thirdPartyId });
     if (createdByUserId) statusQb.andWhere('o.createdByUserId = :createdByUserId', { createdByUserId });
+    if (tenantId !== null) statusQb.andWhere('o.entity = :tenantId', { tenantId });
 
     statusQb.groupBy('o.status').orderBy('o.status', 'ASC');
 
@@ -377,7 +413,7 @@ export class OrdersService {
   /**
    * Clone an order: creates a new BORRADOR with same lines/header.
    */
-  async cloneOrder(id: number, createdByUserId: number): Promise<Order> {
+  async cloneOrder(id: number, createdByUserId: number, tenantId: number | null): Promise<Order> {
     const original = await this.findOne(id);
 
     const tempRef = `BORD${Date.now()}${Math.floor(Math.random() * 9999)}`;
@@ -395,6 +431,7 @@ export class OrdersService {
         isDraft: true,
         createdByUserId,
         orderDate: new Date(),
+        entity: tenantId ?? 1,
       }),
     );
     await this.orderRepo.update(newOrder.id, { ref: `BORRADOR-${newOrder.id}` });
@@ -438,7 +475,7 @@ export class OrdersService {
   /**
    * Export all orders (with lines) as a UTF-8 CSV string.
    */
-  async exportCsv(filter: FilterOrderDto): Promise<string> {
+  async exportCsv(filter: FilterOrderDto, tenantId: number | null): Promise<string> {
     const { status, thirdPartyId, dateFrom, dateTo, clientRef } = filter;
 
     const qb = this.orderRepo
@@ -453,6 +490,7 @@ export class OrdersService {
     if (dateFrom) qb.andWhere('o.orderDate >= :dateFrom', { dateFrom });
     if (dateTo) qb.andWhere('o.orderDate <= :dateTo', { dateTo });
     if (clientRef) qb.andWhere('o.clientRef LIKE :clientRef', { clientRef: `%${clientRef}%` });
+    if (tenantId !== null) qb.andWhere('o.entity = :tenantId', { tenantId });
 
     const orders = await qb.getMany();
 

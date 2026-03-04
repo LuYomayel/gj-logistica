@@ -7,7 +7,8 @@ import {
   CreateInventoryDto, AddInventoryLineDto, UpdateInventoryLineDto, FilterInventoryDto,
 } from './dto/create-inventory.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('inventories')
 @ApiBearerAuth()
@@ -16,9 +17,13 @@ export class InventoriesController {
   constructor(private readonly service: InventoriesService) {}
 
   @Get()
+  @RequiresPermission('stock.read')
   @ApiOperation({ summary: 'Listar inventarios físicos' })
-  findAll(@Query() filter: FilterInventoryDto) {
-    return this.service.findAll(filter);
+  findAll(
+    @Query() filter: FilterInventoryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findAll(filter, user.tenantId);
   }
 
   @Get(':id')
@@ -28,25 +33,28 @@ export class InventoriesController {
   }
 
   @Post()
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_inventories')
   @ApiOperation({ summary: 'Crear inventario' })
-  create(@Body() dto: CreateInventoryDto, @CurrentUser() user: { id: number }) {
-    return this.service.create(dto, user.id);
+  create(
+    @Body() dto: CreateInventoryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.create(dto, user.id, user.tenantId);
   }
 
   @Post(':id/lines')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_inventories')
   @ApiOperation({ summary: 'Agregar línea al inventario' })
   addLine(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddInventoryLineDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.addLine(id, dto, user.id);
   }
 
   @Patch(':id/lines/:lineId')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_inventories')
   @ApiOperation({ summary: 'Actualizar cantidad real de una línea' })
   updateLine(
     @Param('id', ParseIntPipe) id: number,
@@ -57,7 +65,7 @@ export class InventoriesController {
   }
 
   @Delete(':id/lines/:lineId')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_inventories')
   @HttpCode(204)
   @ApiOperation({ summary: 'Eliminar línea del inventario' })
   removeLine(
@@ -68,21 +76,24 @@ export class InventoriesController {
   }
 
   @Post(':id/validate')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('stock.write_inventories')
   @ApiOperation({ summary: 'Generar movimientos y cerrar inventario' })
-  validate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
+  validate(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.service.validate(id, user.id);
   }
 
   @Post(':id/reset')
-  @Roles('admin')
+  @RequiresPermission('stock.write_inventories')
   @ApiOperation({ summary: 'Volver inventario a borrador' })
   reset(@Param('id', ParseIntPipe) id: number) {
     return this.service.resetToDraft(id);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequiresPermission('stock.write_inventories')
   @HttpCode(204)
   @ApiOperation({ summary: 'Eliminar inventario en borrador' })
   remove(@Param('id', ParseIntPipe) id: number) {

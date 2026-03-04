@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { ThirdParty } from '../entities/third-party.entity';
 import { SalesRepresentative } from '../entities/sales-representative.entity';
 import { CreateThirdPartyDto } from './dto/create-third-party.dto';
@@ -15,18 +15,26 @@ export class ThirdPartiesService {
     private salesRepRepo: Repository<SalesRepresentative>,
   ) {}
 
-  async findAll(): Promise<ThirdParty[]> {
-    return this.repo.find({ where: { status: 1 }, order: { name: 'ASC' } });
+  async findAll(tenantId: number | null): Promise<ThirdParty[]> {
+    return this.repo.find({
+      where: {
+        status: 1,
+        ...(tenantId !== null && { entity: tenantId }),
+      },
+      order: { name: 'ASC' },
+    });
   }
 
-  async findOne(id: number): Promise<ThirdParty> {
-    const tp = await this.repo.findOne({ where: { id } });
+  async findOne(id: number, tenantId?: number | null): Promise<ThirdParty> {
+    const where: FindOptionsWhere<ThirdParty> = { id };
+    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
+    const tp = await this.repo.findOne({ where });
     if (!tp) throw new NotFoundException(`Empresa ${id} no encontrada`);
     return tp;
   }
 
-  async create(dto: CreateThirdPartyDto): Promise<ThirdParty> {
-    const tp = this.repo.create({ ...dto, status: 1, isClient: 1 });
+  async create(dto: CreateThirdPartyDto, tenantId: number | null): Promise<ThirdParty> {
+    const tp = this.repo.create({ ...dto, status: 1, isClient: 1, entity: tenantId ?? 1 });
     return this.repo.save(tp);
   }
 

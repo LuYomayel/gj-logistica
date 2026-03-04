@@ -1,12 +1,15 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, ParseIntPipe, UseGuards,
+  Param, Body, ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Roles } from '../common/decorators/roles.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -15,10 +18,10 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('users.read')
   @ApiOperation({ summary: 'Listar usuarios' })
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.findAll(user.tenantId);
   }
 
   @Get(':id')
@@ -28,24 +31,44 @@ export class UsersController {
   }
 
   @Post()
-  @Roles('admin')
+  @RequiresPermission('users.write')
   @ApiOperation({ summary: 'Crear usuario' })
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(
+    @Body() dto: CreateUserDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usersService.create(dto, user.tenantId);
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @RequiresPermission('users.write')
   @ApiOperation({ summary: 'Actualizar usuario' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequiresPermission('users.delete')
   @ApiOperation({ summary: 'Desactivar usuario' })
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.deactivate(id);
+  }
+
+  @Patch(':id/activate')
+  @RequiresPermission('users.write')
+  @ApiOperation({ summary: 'Reactivar usuario desactivado' })
+  activate(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.activate(id);
+  }
+
+  @Patch(':id/change-password')
+  @ApiOperation({ summary: 'Cambiar contraseña (propia o de otro usuario con permiso users.write_password)' })
+  changePassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser() requester: AuthenticatedUser,
+  ) {
+    return this.usersService.changePassword(id, dto, requester);
   }
 
   @Get(':id/groups')

@@ -5,7 +5,9 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ContactsService, UpdateContactDto } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
-import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('contacts')
 @ApiBearerAuth()
@@ -14,27 +16,37 @@ export class ContactsController {
   constructor(private readonly service: ContactsService) {}
 
   @Get()
+  @RequiresPermission('contacts.read')
   @ApiOperation({ summary: 'Listar contactos' })
   @ApiQuery({ name: 'search', required: false })
-  findAll(@Query('search') search?: string) {
-    return this.service.findAll(search);
+  findAll(
+    @Query('search') search?: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.service.findAll(search, user?.tenantId ?? null);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de contacto' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findOne(id, user.tenantId);
   }
 
   @Post()
-  @Roles('comercial', 'comunicacion', 'admin')
+  @RequiresPermission('contacts.write')
   @ApiOperation({ summary: 'Crear contacto' })
-  create(@Body() dto: CreateContactDto) {
-    return this.service.create(dto);
+  create(
+    @Body() dto: CreateContactDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.create(dto, user.tenantId);
   }
 
   @Patch(':id')
-  @Roles('comercial', 'comunicacion', 'admin')
+  @RequiresPermission('contacts.write')
   @ApiOperation({ summary: 'Actualizar contacto' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -44,7 +56,7 @@ export class ContactsController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequiresPermission('contacts.delete')
   @ApiOperation({ summary: 'Desactivar contacto' })
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.service.deactivate(id);

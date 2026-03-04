@@ -1,20 +1,23 @@
 import { apiClient } from '../../../shared/api/client';
-import type { AuthUser, LoginResponse } from '../../../shared/types';
+import type { AuthUser, LoginResponse, UserType } from '../../../shared/types';
 
 // El backend retorna { accessToken } (camelCase). Después de unwrap por el interceptor.
 interface BackendLoginData {
   accessToken: string;
 }
 
-// El backend retorna el User completo en /auth/me
-interface BackendUser {
+// El backend retorna el AuthenticatedUser completo en /auth/me
+// (misma forma que JwtStrategy.validate() — includes permissions)
+interface BackendMe {
   id: number;
   username: string;
-  firstName: string | null;
-  lastName: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   email: string | null;
   isAdmin: boolean;
-  status: number;
+  userType: UserType;
+  tenantId: number | null;
+  permissions: string[];
 }
 
 export const authApi = {
@@ -27,18 +30,21 @@ export const authApi = {
 
     const token = loginData.accessToken;
 
-    // 2. Fetch perfil del usuario con el token recién obtenido
-    const { data: userData } = await apiClient.get<BackendUser>('/auth/me', {
+    // 2. Fetch perfil con permisos efectivos (JwtStrategy ya los calcula)
+    const { data: me } = await apiClient.get<BackendMe>('/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     const user: AuthUser = {
-      id: userData.id,
-      username: userData.username,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: userData.email,
-      isAdmin: userData.isAdmin,
+      id: me.id,
+      username: me.username,
+      firstName: me.firstName ?? null,
+      lastName: me.lastName ?? null,
+      email: me.email,
+      isAdmin: me.isAdmin,
+      userType: me.userType ?? 'client_user',
+      tenantId: me.tenantId,
+      permissions: me.permissions ?? [],
     };
 
     return { access_token: token, user };

@@ -75,18 +75,18 @@ describe('ProductsService', () => {
 
   describe('findAll', () => {
     it('should return paginated products', async () => {
-      const result = await service.findAll({ page: 1, limit: 50 });
+      const result = await service.findAll({ page: 1, limit: 50 }, null);
       expect(result.total).toBe(1);
       expect(result.items[0].ref).toBe('BI000032');
     });
 
     it('should apply search filter when provided', async () => {
-      await service.findAll({ search: 'Remera', page: 1, limit: 50 });
+      await service.findAll({ search: 'Remera', page: 1, limit: 50 }, null);
       expect(mockQb.andWhere).toHaveBeenCalled();
     });
 
     it('should apply rubro filter when provided', async () => {
-      await service.findAll({ rubro: 'Indumentaria', page: 1, limit: 50 });
+      await service.findAll({ rubro: 'Indumentaria', page: 1, limit: 50 }, null);
       expect(mockQb.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('rubro'),
         expect.any(Object),
@@ -138,7 +138,7 @@ describe('ProductsService', () => {
 
   describe('getLowStock', () => {
     it('should return products below alert threshold', async () => {
-      const result = await service.getLowStock();
+      const result = await service.getLowStock(null);
       expect(Array.isArray(result)).toBe(true);
     });
   });
@@ -157,7 +157,7 @@ describe('ProductsService', () => {
   describe('getStats', () => {
     it('should return popularProducts and byRubro arrays', async () => {
       mockDsQb.getRawMany.mockResolvedValue([]);
-      const result = await service.getStats({});
+      const result = await service.getStats({}, null);
       expect(result).toHaveProperty('popularProducts');
       expect(result).toHaveProperty('byRubro');
       expect(Array.isArray(result.popularProducts)).toBe(true);
@@ -170,7 +170,7 @@ describe('ProductsService', () => {
       ]).mockResolvedValueOnce([
         { rubro: 'Indumentaria', productCount: '3', orderCount: '10' },
       ]);
-      const result = await service.getStats({ year: 2025 });
+      const result = await service.getStats({ year: 2025 }, null);
       expect(result.popularProducts[0].productId).toBe(1);
       expect(result.popularProducts[0].orderCount).toBe(5);
       expect(result.byRubro[0].rubro).toBe('Indumentaria');

@@ -5,6 +5,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
+import type { AuthenticatedUser } from './strategies/jwt.strategy';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -21,8 +22,10 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Perfil del usuario autenticado' })
-  async getProfile(@CurrentUser() user: { id: number }) {
-    return this.authService.getProfile(user.id);
+  @ApiOperation({ summary: 'Perfil del usuario autenticado con permisos efectivos' })
+  getProfile(@CurrentUser() user: AuthenticatedUser): AuthenticatedUser {
+    // JwtStrategy.validate() already enriches request.user with permissions,
+    // userType and tenantId — just return it directly.
+    return user;
   }
 }

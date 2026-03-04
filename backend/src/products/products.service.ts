@@ -41,7 +41,7 @@ export class ProductsService {
     private dataSource: DataSource,
   ) {}
 
-  async findAll(filter: FilterProductDto): Promise<PaginatedProducts> {
+  async findAll(filter: FilterProductDto, tenantId: number | null): Promise<PaginatedProducts> {
     const { search, rubro, subrubro, marca, talle, color, lowStock, page = 1, limit = 50 } = filter;
 
     const qb = this.repo.createQueryBuilder('p');
@@ -58,6 +58,7 @@ export class ProductsService {
     if (talle) qb.andWhere('p.talle LIKE :talle', { talle: `%${talle}%` });
     if (color) qb.andWhere('p.color LIKE :color', { color: `%${color}%` });
     if (lowStock) qb.andWhere('p.stock < p.stockAlertThreshold');
+    if (tenantId !== null) qb.andWhere('p.entity = :tenantId', { tenantId });
 
     qb.skip((page - 1) * limit).take(limit).orderBy('p.ref', 'ASC');
 
@@ -65,8 +66,10 @@ export class ProductsService {
     return { items, total, page, limit };
   }
 
-  async findOne(id: number): Promise<Product> {
-    const product = await this.repo.findOne({ where: { id } });
+  async findOne(id: number, tenantId?: number | null): Promise<Product> {
+    const where: FindOptionsWhere<Product> = { id };
+    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
+    const product = await this.repo.findOne({ where });
     if (!product) throw new NotFoundException(`Producto ${id} no encontrado`);
     return product;
   }
@@ -77,12 +80,14 @@ export class ProductsService {
     return product;
   }
 
-  async create(dto: CreateProductDto, createdByUserId?: number): Promise<Product> {
-    const existing = await this.repo.findOne({ where: { ref: dto.ref } });
-    if (existing) throw new ConflictException(`Ref '${dto.ref}' ya existe`);
+  async create(dto: CreateProductDto, createdByUserId?: number, tenantId?: number | null): Promise<Product> {
+    // Uniqueness is scoped to tenant: same ref can exist in different tenants
+    const effectiveEntity = tenantId ?? 1;
+    const existing = await this.repo.findOne({ where: { ref: dto.ref, entity: effectiveEntity } });
+    if (existing) throw new ConflictException(`Ref '${dto.ref}' ya existe en este tenant`);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const product = (this.repo.create({ ...(dto as any), createdByUserId: createdByUserId ?? null, status: 1, statusBuy: 1 } as any) as unknown) as Product;
+    const product = (this.repo.create({ ...(dto as any), createdByUserId: createdByUserId ?? null, status: 1, statusBuy: 1, entity: tenantId ?? 1 } as any) as unknown) as Product;
     return this.repo.save(product);
   }
 
@@ -98,21 +103,25 @@ export class ProductsService {
     return this.repo.save(product);
   }
 
-  async getLowStock(): Promise<Product[]> {
-    return this.repo
+  async getLowStock(tenantId: number | null): Promise<Product[]> {
+    const qb = this.repo
       .createQueryBuilder('p')
       .where('p.stockAlertThreshold > 0')
       .andWhere('p.stock < p.stockAlertThreshold')
-      .andWhere('p.status = 1')
-      .orderBy('p.stock', 'ASC')
-      .getMany();
+      .andWhere('p.status = 1');
+
+    if (tenantId !== null) qb.andWhere('p.entity = :tenantId', { tenantId });
+
+    return qb.orderBy('p.stock', 'ASC').getMany();
   }
 
   /**
    * Export all products as a UTF-8 CSV string.
    */
-  async exportCsv(): Promise<string> {
-    const products = await this.repo.find({ order: { ref: 'ASC' } });
+  async exportCsv(tenantId: number | null): Promise<string> {
+    const qb = this.repo.createQueryBuilder('p').orderBy('p.ref', 'ASC');
+    if (tenantId !== null) qb.andWhere('p.entity = :tenantId', { tenantId });
+    const products = await qb.getMany();
 
     const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
@@ -142,7 +151,7 @@ export class ProductsService {
    * Import products from an Excel/CSV buffer.
    * Upserts by ref: creates if not found, updates if exists.
    */
-  async importFromExcel(buffer: Buffer): Promise<{ created: number; updated: number; errors: string[] }> {
+  async importFromExcel(buffer: Buffer, userId?: number, tenantId?: number | null): Promise<{ created: number; updated: number; errors: string[] }> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const xlsx = require('xlsx') as typeof import('xlsx');
     const wb = xlsx.read(buffer, { type: 'buffer' });
@@ -207,7 +216,7 @@ export class ProductsService {
           await this.repo.update(existing.id, data);
           updated++;
         } else {
-          await this.repo.save(this.repo.create({ ...data, status: 1, statusBuy: 1 }));
+          await this.repo.save(this.repo.create({ ...data, status: 1, statusBuy: 1, entity: tenantId ?? 1 }));
           created++;
         }
       } catch (err) {
@@ -221,7 +230,7 @@ export class ProductsService {
   /**
    * Estadísticas de productos: popularidad por pedidos + desglose por rubro.
    */
-  async getStats(filter: ProductStatsDto): Promise<ProductStatsResult> {
+  async getStats(filter: ProductStatsDto, tenantId: number | null): Promise<ProductStatsResult> {
     const { year, thirdPartyId, productId } = filter;
 
     // ── Top productos por cantidad de pedidos ───────────────────────────
@@ -244,6 +253,7 @@ export class ProductsService {
     if (year) popularQb.andWhere('YEAR(o.orderDate) = :year', { year });
     if (thirdPartyId) popularQb.andWhere('o.thirdPartyId = :thirdPartyId', { thirdPartyId });
     if (productId) popularQb.andWhere('ol.productId = :productId', { productId });
+    if (tenantId !== null) popularQb.andWhere('p.entity = :tenantId', { tenantId });
 
     popularQb
       .groupBy('ol.productId, p.ref, p.label, p.rubro')
@@ -268,6 +278,7 @@ export class ProductsService {
 
     if (year) rubroQb.andWhere('YEAR(o.orderDate) = :year', { year });
     if (thirdPartyId) rubroQb.andWhere('o.thirdPartyId = :thirdPartyId', { thirdPartyId });
+    if (tenantId !== null) rubroQb.andWhere('p.entity = :tenantId', { tenantId });
 
     rubroQb.groupBy('p.rubro').orderBy('orderCount', 'DESC');
 

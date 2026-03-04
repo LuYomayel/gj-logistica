@@ -29,7 +29,7 @@ export class InventoriesService {
     private dataSource: DataSource,
   ) {}
 
-  async findAll(filter: FilterInventoryDto): Promise<PaginatedInventories> {
+  async findAll(filter: FilterInventoryDto, tenantId: number | null): Promise<PaginatedInventories> {
     const { warehouseId, status, page = 1, limit = 20 } = filter;
 
     const qb = this.inventoryRepo
@@ -38,6 +38,7 @@ export class InventoriesService {
 
     if (warehouseId !== undefined) qb.andWhere('i.warehouseId = :warehouseId', { warehouseId });
     if (status !== undefined) qb.andWhere('i.status = :status', { status });
+    if (tenantId !== null) qb.andWhere('i.entity = :tenantId', { tenantId });
 
     qb.orderBy('i.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
 
@@ -70,7 +71,7 @@ export class InventoriesService {
     return { ...inventory, lines: enrichedLines } as Inventory & { lines: InventoryLine[] };
   }
 
-  async create(dto: CreateInventoryDto, createdByUserId: number): Promise<Inventory> {
+  async create(dto: CreateInventoryDto, createdByUserId: number, tenantId: number | null): Promise<Inventory> {
     const inventory = this.inventoryRepo.create({
       ref: dto.ref,
       label: dto.label ?? null,
@@ -79,6 +80,7 @@ export class InventoriesService {
       inventoryDate: dto.inventoryDate ? new Date(dto.inventoryDate) : null,
       status: 0,
       createdByUserId,
+      entity: tenantId ?? 1,
     });
     return this.inventoryRepo.save(inventory);
   }

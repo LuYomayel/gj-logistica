@@ -73,7 +73,7 @@ describe('StockService', () => {
 
   describe('findMovements', () => {
     it('should return paginated movements', async () => {
-      const result = await service.findMovements({ page: 1, limit: 50 });
+      const result = await service.findMovements({ page: 1, limit: 50 }, null);
       expect(result.total).toBe(0);
       expect(Array.isArray(result.items)).toBe(true);
     });
@@ -91,6 +91,7 @@ describe('StockService', () => {
       const result = await service.createManualMovement(
         { warehouseId: 1, productId: 1, quantity: 5 },
         1,
+        null,
       );
       expect(result.id).toBe(1);
       expect(qr.commitTransaction).toHaveBeenCalled();
@@ -102,7 +103,7 @@ describe('StockService', () => {
       mockDataSource.createQueryRunner.mockReturnValue(qr);
 
       await expect(
-        service.createManualMovement({ warehouseId: 1, productId: 1, quantity: -10 }, 1),
+        service.createManualMovement({ warehouseId: 1, productId: 1, quantity: -10 }, 1, null),
       ).rejects.toThrow(BadRequestException);
       expect(qr.rollbackTransaction).toHaveBeenCalled();
     });
@@ -121,6 +122,7 @@ describe('StockService', () => {
       const result = await service.createManualMovement(
         { warehouseId: 1, productId: 1, quantity: 5 },
         1,
+        null,
       );
       expect(qr._mockStockRepo.create).toHaveBeenCalled();
       expect(result.quantity).toBe(5);

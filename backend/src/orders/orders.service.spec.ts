@@ -9,6 +9,7 @@ import { OrderSequence } from '../entities/order-sequence.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { Product } from '../entities/product.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -126,10 +127,14 @@ describe('OrdersService', () => {
         { provide: getRepositoryToken(Order), useValue: mockOrderRepoModule },
         { provide: getRepositoryToken(OrderLine), useValue: mockLineRepoModule },
         { provide: getRepositoryToken(OrderSequence), useValue: {} },
-        { provide: getRepositoryToken(ProductStock), useValue: {} },
+        { provide: getRepositoryToken(ProductStock), useValue: { findOne: jest.fn().mockResolvedValue({ quantity: 100 }) } },
         { provide: getRepositoryToken(StockMovement), useValue: {} },
         { provide: getRepositoryToken(Product), useValue: {} },
         { provide: DataSource, useValue: mockDataSource },
+        {
+          provide: NotificationsService,
+          useValue: { sendOrderEvent: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 
@@ -140,7 +145,7 @@ describe('OrdersService', () => {
 
   describe('findAll', () => {
     it('should return paginated orders', async () => {
-      const result = await service.findAll({ page: 1, limit: 20 });
+      const result = await service.findAll({ page: 1, limit: 20 }, null);
       expect(result.total).toBe(0);
       expect(Array.isArray(result.items)).toBe(true);
     });
@@ -154,7 +159,7 @@ describe('OrdersService', () => {
       mockOrderRepoModule.save.mockResolvedValue(savedOrder);
       mockOrderRepoModule.findOne.mockResolvedValue(savedOrder);
 
-      const result = await service.create({ thirdPartyId: 10, warehouseId: 1 }, 1);
+      const result = await service.create({ thirdPartyId: 10, warehouseId: 1 }, 1, null);
       expect(mockOrderRepoModule.save).toHaveBeenCalled();
       expect(mockOrderRepoModule.update).toHaveBeenCalledWith(5, { ref: 'BORRADOR-5' });
       expect(result.status).toBe(0);
@@ -168,6 +173,7 @@ describe('OrdersService', () => {
       await service.create(
         { thirdPartyId: 10, lines: [{ productId: 1, quantity: 3 }] },
         1,
+        null,
       );
       expect(mockLineRepoModule.save).toHaveBeenCalled();
     });
@@ -294,7 +300,7 @@ describe('OrdersService', () => {
   describe('getStats', () => {
     it('should return byMonth and byStatus arrays', async () => {
       mockQb.getRawMany.mockResolvedValue([]);
-      const result = await service.getStats({});
+      const result = await service.getStats({}, null);
       expect(result).toHaveProperty('byMonth');
       expect(result).toHaveProperty('byStatus');
       expect(Array.isArray(result.byMonth)).toBe(true);
@@ -306,7 +312,7 @@ describe('OrdersService', () => {
         .mockResolvedValueOnce([{ year: '2025', month: '3', count: '10', totalQuantity: '50' }])
         .mockResolvedValueOnce([{ status: '1', count: '8' }]);
 
-      const result = await service.getStats({ year: 2025 });
+      const result = await service.getStats({ year: 2025 }, null);
       expect(result.byMonth[0].year).toBe(2025);
       expect(result.byMonth[0].count).toBe(10);
       expect(result.byStatus[0].status).toBe(1);

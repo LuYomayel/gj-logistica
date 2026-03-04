@@ -2,7 +2,7 @@ import {
   Injectable, NotFoundException, ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, Repository, FindOptionsWhere } from 'typeorm';
 import { Contact } from '../entities/contact.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 
@@ -14,35 +14,41 @@ export class ContactsService {
     @InjectRepository(Contact) private repo: Repository<Contact>,
   ) {}
 
-  async findAll(search?: string): Promise<Contact[]> {
+  async findAll(search?: string, tenantId?: number | null): Promise<Contact[]> {
     if (search) {
+      const where = [
+        { firstName: ILike(`%${search}%`), ...(tenantId !== null && tenantId !== undefined && { entity: tenantId }) },
+        { lastName: ILike(`%${search}%`), ...(tenantId !== null && tenantId !== undefined && { entity: tenantId }) },
+        { nombreFantasia: ILike(`%${search}%`), ...(tenantId !== null && tenantId !== undefined && { entity: tenantId }) },
+      ];
       return this.repo.find({
-        where: [
-          { firstName: ILike(`%${search}%`) },
-          { lastName: ILike(`%${search}%`) },
-          { nombreFantasia: ILike(`%${search}%`) },
-        ],
+        where,
         order: { lastName: 'ASC' },
       });
     }
-    return this.repo.find({ order: { lastName: 'ASC' } });
+    return this.repo.find({
+      where: tenantId !== null && tenantId !== undefined ? { entity: tenantId } : {},
+      order: { lastName: 'ASC' },
+    });
   }
 
-  async findOne(id: number): Promise<Contact> {
+  async findOne(id: number, tenantId?: number | null): Promise<Contact> {
+    const where: FindOptionsWhere<Contact> = { id };
+    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
     const contact = await this.repo.findOne({
-      where: { id },
+      where,
       relations: { thirdParty: true },
     });
     if (!contact) throw new NotFoundException(`Contacto ${id} no encontrado`);
     return contact;
   }
 
-  async create(dto: CreateContactDto): Promise<Contact> {
+  async create(dto: CreateContactDto, tenantId: number | null): Promise<Contact> {
     if (dto.dni) {
       const existing = await this.repo.findOne({ where: { dni: dto.dni } });
       if (existing) throw new ConflictException(`DNI ${dto.dni} ya registrado`);
     }
-    const contact = this.repo.create({ ...dto, status: 1 });
+    const contact = this.repo.create({ ...dto, status: 1, entity: tenantId ?? 1 });
     return this.repo.save(contact);
   }
 

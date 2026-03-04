@@ -1,3 +1,7 @@
+// ── Multi-tenancy & Permissions ───────────────────────────────────────────
+
+export type UserType = 'super_admin' | 'client_admin' | 'client_user';
+
 export interface AuthUser {
   id: number;
   username: string;
@@ -5,6 +9,11 @@ export interface AuthUser {
   lastName: string | null;
   email: string | null;
   isAdmin: boolean;
+  userType: UserType;
+  tenantId: number | null;  // null for super_admin
+  entity?: number;          // raw entity column value from backend
+  /** Effective permissions: ['*'] for super_admin/client_admin, specific list for client_user */
+  permissions: string[];
 }
 
 export interface LoginResponse {
@@ -118,6 +127,8 @@ export interface User {
   email: string | null;
   phone: string | null;
   isAdmin: boolean;
+  userType: UserType;
+  entity: number;            // tenantId
   status: number;
   language: string | null;
   groups?: { id: number; name: string }[];
@@ -244,4 +255,51 @@ export interface OrderStatsByMonth {
 export interface OrderStats {
   byMonth: OrderStatsByMonth[];
   byStatus: { status: number; count: number }[];
+}
+
+// ── Multi-tenancy & Permissions (extended) ────────────────────────────────
+
+export interface Tenant {
+  id: number;
+  name: string;
+  code: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Permission {
+  id: number;
+  module: string;
+  action: string;
+  label: string;
+  description: string | null;
+  isAdvanced: boolean;
+  isActive: boolean;
+}
+
+export interface PermissionGroup {
+  id: number;
+  tenantId: number | null;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionGroupWithPerms extends PermissionGroup {
+  permissions?: Permission[];
+}
+
+export interface UserPermissionOverride {
+  id: number;
+  userId: number;
+  permissionId: number;
+  granted: boolean;
+}
+
+export interface EffectivePermissions {
+  effective: string[];
+  overrides: UserPermissionOverride[];
 }

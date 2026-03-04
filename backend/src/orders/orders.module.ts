@@ -8,10 +8,12 @@ import { OrderSequence } from '../entities/order-sequence.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { Product } from '../entities/product.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderLine, OrderSequence, ProductStock, StockMovement, Product]),
+    NotificationsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

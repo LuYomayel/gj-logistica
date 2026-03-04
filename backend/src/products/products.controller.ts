@@ -10,7 +10,8 @@ import { ProductsService, UpdateProductDto } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto, ProductStatsDto } from './dto/filter-product.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
+import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('products')
 @ApiBearerAuth()
@@ -19,39 +20,53 @@ export class ProductsController {
   constructor(private readonly service: ProductsService) {}
 
   @Get()
+  @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Listar productos con filtros' })
-  findAll(@Query() filter: FilterProductDto) {
-    return this.service.findAll(filter);
+  findAll(
+    @Query() filter: FilterProductDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findAll(filter, user.tenantId);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Estadísticas de productos: popularidad y desglose por rubro' })
-  getStats(@Query() filter: ProductStatsDto) {
-    return this.service.getStats(filter);
+  getStats(
+    @Query() filter: ProductStatsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.getStats(filter, user.tenantId);
   }
 
   @Get('low-stock')
   @ApiOperation({ summary: 'Productos con stock bajo el umbral de alerta' })
-  getLowStock() {
-    return this.service.getLowStock();
+  getLowStock(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getLowStock(user.tenantId);
   }
 
   @Get('export')
+  @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Exportar productos como CSV' })
-  async exportCsv(@Res() res: Response) {
-    const csv = await this.service.exportCsv();
+  async exportCsv(
+    @Res() res: Response,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const csv = await this.service.exportCsv(user.tenantId);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="productos.csv"');
     res.send('\uFEFF' + csv);
   }
 
   @Post('import')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('products.write')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Importar productos desde Excel (.xlsx) o CSV' })
-  async importExcel(@UploadedFile() file: Express.Multer.File) {
+  async importExcel(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     if (!file) throw new Error('No se recibió archivo');
-    return this.service.importFromExcel(file.buffer);
+    return this.service.importFromExcel(file.buffer, user.id, user.tenantId);
   }
 
   @Get('ref/:ref')
@@ -62,22 +77,25 @@ export class ProductsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de producto' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findOne(id, user.tenantId);
   }
 
   @Post()
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('products.write')
   @ApiOperation({ summary: 'Crear producto' })
   create(
     @Body() dto: CreateProductDto,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.create(dto, user.id);
+    return this.service.create(dto, user.id, user.tenantId);
   }
 
   @Patch(':id')
-  @Roles('admin', 'comunicacion')
+  @RequiresPermission('products.write')
   @ApiOperation({ summary: 'Actualizar producto' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -87,7 +105,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequiresPermission('products.delete')
   @ApiOperation({ summary: 'Desactivar producto' })
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.service.deactivate(id);

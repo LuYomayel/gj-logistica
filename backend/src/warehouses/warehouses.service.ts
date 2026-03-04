@@ -14,8 +14,14 @@ export class WarehousesService {
     @InjectRepository(ProductStock) private stockRepo: Repository<ProductStock>,
   ) {}
 
-  async findAll(): Promise<Warehouse[]> {
-    return this.repo.find({ where: { status: 1 }, order: { name: 'ASC' } });
+  async findAll(tenantId: number | null): Promise<Warehouse[]> {
+    return this.repo.find({
+      where: {
+        status: 1,
+        ...(tenantId !== null && { entity: tenantId }),
+      },
+      order: { name: 'ASC' },
+    });
   }
 
   async findOne(id: number): Promise<Warehouse> {
@@ -24,8 +30,8 @@ export class WarehousesService {
     return wh;
   }
 
-  async create(dto: CreateWarehouseDto, createdByUserId?: number): Promise<Warehouse> {
-    const wh = this.repo.create({ ...dto, status: 1, createdByUserId: createdByUserId ?? null });
+  async create(dto: CreateWarehouseDto, createdByUserId?: number, tenantId?: number | null): Promise<Warehouse> {
+    const wh = this.repo.create({ ...dto, status: 1, createdByUserId: createdByUserId ?? null, entity: tenantId ?? 1 });
     return this.repo.save(wh);
   }
 

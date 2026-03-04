@@ -104,4 +104,13 @@ export const ordersApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+  downloadPdf: async (id: number, ref: string): Promise<void> => {
+    const resp = await apiClient.get(`/orders/${id}/pdf`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([resp.data as BlobPart], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ref}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };

@@ -9,11 +9,13 @@ import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
 import { productsApi, type ProductFilters } from '../api/productsApi';
 import { CreateProductDialog } from './CreateProductDialog';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Product } from '../../../shared/types';
 
 export function ProductsTable() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
   const [filters, setFilters] = useState<ProductFilters>({ page: 1, limit: 20 });
   const [searchInput, setSearchInput] = useState('');
   const [rubInput, setRubInput] = useState('');
@@ -104,29 +106,35 @@ export function ProductsTable() {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Button
-            label="Importar Excel"
-            icon="pi pi-upload"
-            outlined
-            severity="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2"
-          />
-          <Button
-            label="Exportar CSV"
-            icon="pi pi-download"
-            outlined
-            severity="secondary"
-            loading={exporting}
-            onClick={handleExport}
-            className="px-4 py-2"
-          />
-          <Button
-            label="Nuevo Producto"
-            icon="pi pi-plus"
-            onClick={() => setShowCreate(true)}
-            className="bg-[#1b3a5f] text-white border-[#1b3a5f] px-4 py-2"
-          />
+          {hasPermission('products.write') && (
+            <Button
+              label="Importar Excel"
+              icon="pi pi-upload"
+              outlined
+              severity="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2"
+            />
+          )}
+          {hasPermission('products.export') && (
+            <Button
+              label="Exportar CSV"
+              icon="pi pi-download"
+              outlined
+              severity="secondary"
+              loading={exporting}
+              onClick={handleExport}
+              className="px-4 py-2"
+            />
+          )}
+          {hasPermission('products.write') && (
+            <Button
+              label="Nuevo Producto"
+              icon="pi pi-plus"
+              onClick={() => setShowCreate(true)}
+              className="bg-[#1b3a5f] text-white border-[#1b3a5f] px-4 py-2"
+            />
+          )}
         </div>
       </div>
 

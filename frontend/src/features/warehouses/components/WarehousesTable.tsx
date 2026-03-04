@@ -8,10 +8,12 @@ import { Skeleton } from 'primereact/skeleton';
 import { useState } from 'react';
 import { warehousesApi } from '../api/warehousesApi';
 import { CreateWarehouseDialog } from './CreateWarehouseDialog';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Warehouse } from '../../../shared/types';
 
 export function WarehousesTable() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -40,12 +42,14 @@ export function WarehousesTable() {
             <h1 className="text-xl font-bold text-[#1b3a5f]">Almacenes</h1>
             <p className="text-sm text-gray-500 mt-0.5">{warehouses.length} almacén{warehouses.length !== 1 ? 'es' : ''}</p>
           </div>
-          <Button
-            label="Nuevo Almacén"
-            icon="pi pi-plus"
-            onClick={() => setShowCreate(true)}
-            className="bg-[#1b3a5f] text-white border-[#1b3a5f] hover:bg-[#152d4a] px-4 py-2"
-          />
+          {hasPermission('stock.write_warehouses') && (
+            <Button
+              label="Nuevo Almacén"
+              icon="pi pi-plus"
+              onClick={() => setShowCreate(true)}
+              className="bg-[#1b3a5f] text-white border-[#1b3a5f] hover:bg-[#152d4a] px-4 py-2"
+            />
+          )}
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">

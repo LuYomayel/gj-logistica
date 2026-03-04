@@ -9,12 +9,14 @@ import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
 import { Skeleton } from 'primereact/skeleton';
 import { inventoriesApi, type CreateInventoryPayload } from '../api/inventoriesApi';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Inventory } from '../../../shared/types';
 import { INVENTORY_STATUS } from '../../../shared/types';
 
 export function InventoriesTable() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { hasPermission } = useAuth();
   const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState<CreateInventoryPayload>({ ref: '' });
@@ -55,12 +57,14 @@ export function InventoriesTable() {
           <h1 className="text-2xl font-bold text-[#1b3a5f]">Inventarios</h1>
           <p className="text-gray-500 text-sm">{total.toLocaleString('es-AR')} inventarios en total</p>
         </div>
-        <Button
-          label="Nuevo inventario"
-          icon="pi pi-plus"
-          onClick={() => setShowNew(true)}
-          className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
-        />
+        {hasPermission('stock.write_inventories') && (
+          <Button
+            label="Nuevo inventario"
+            icon="pi pi-plus"
+            onClick={() => setShowNew(true)}
+            className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
+          />
+        )}
       </div>
 
       {/* Table */}

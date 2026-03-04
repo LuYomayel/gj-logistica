@@ -33,7 +33,7 @@ export class StockService {
     private dataSource: DataSource,
   ) {}
 
-  async findMovements(filter: FilterMovementsDto): Promise<PaginatedMovements> {
+  async findMovements(filter: FilterMovementsDto, tenantId: number | null): Promise<PaginatedMovements> {
     const { warehouseId, productId, originType, page = 1, limit = 50 } = filter;
 
     const qb = this.movementRepo
@@ -44,6 +44,7 @@ export class StockService {
     if (warehouseId) qb.andWhere('m.warehouseId = :warehouseId', { warehouseId });
     if (productId) qb.andWhere('m.productId = :productId', { productId });
     if (originType) qb.andWhere('m.originType = :originType', { originType });
+    if (tenantId !== null) qb.andWhere('m.entity = :tenantId', { tenantId });
 
     qb.orderBy('m.movedAt', 'DESC').skip((page - 1) * limit).take(limit);
 
@@ -65,6 +66,7 @@ export class StockService {
   async createManualMovement(
     dto: CreateStockMovementDto,
     createdByUserId: number,
+    tenantId: number | null,
   ): Promise<StockMovement> {
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
@@ -105,6 +107,7 @@ export class StockService {
         inventoryCode: dto.inventoryCode ?? null,
         createdByUserId,
         movedAt: new Date(),
+        entity: tenantId ?? 1,
       });
       const saved = await movementRepo.save(movement);
 
@@ -122,7 +125,7 @@ export class StockService {
    * Transferencia de stock entre almacenes (movementType=0).
    * fromWarehouseId opcional: si se omite, es una entrada directa al destino.
    */
-  async transferStock(dto: TransferStockDto, createdByUserId: number): Promise<StockMovement[]> {
+  async transferStock(dto: TransferStockDto, createdByUserId: number, tenantId: number | null): Promise<StockMovement[]> {
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
@@ -157,6 +160,7 @@ export class StockService {
           label: dto.label ?? `Transferencia a almacén ${dto.toWarehouseId}`,
           createdByUserId,
           movedAt: new Date(),
+          entity: tenantId ?? 1,
         });
         saved.push(await movementRepo.save(exitMov));
       }
@@ -185,6 +189,7 @@ export class StockService {
         label: dto.label ?? `Transferencia desde almacén ${dto.fromWarehouseId ?? 'externo'}`,
         createdByUserId,
         movedAt: new Date(),
+        entity: tenantId ?? 1,
       });
       saved.push(await movementRepo.save(entryMov));
 

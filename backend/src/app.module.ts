@@ -14,7 +14,9 @@ import { OrdersModule } from './orders/orders.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { InventoriesModule } from './inventories/inventories.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { RolesGuard } from './auth/guards/roles.guard';
+import { PermissionsGuard } from './auth/guards/permissions.guard';
+import { TenantsModule } from './tenants/tenants.module';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
   imports: [
@@ -46,10 +48,12 @@ import { RolesGuard } from './auth/guards/roles.guard';
     OrdersModule,
     NotificationsModule,
     InventoriesModule,
+    TenantsModule,
+    PermissionsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class AppModule {}

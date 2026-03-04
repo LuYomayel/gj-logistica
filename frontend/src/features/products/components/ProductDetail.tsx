@@ -5,6 +5,7 @@ import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
 import { Tag } from 'primereact/tag';
 import { productsApi } from '../api/productsApi';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Product } from '../../../shared/types';
 
 interface InfoRowProps {
@@ -27,6 +28,7 @@ interface Props {
 
 export function ProductDetail({ id }: Props) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['products', id],
@@ -82,9 +84,15 @@ export function ProductDetail({ id }: Props) {
         </div>
 
         <div className="flex gap-2 shrink-0">
-          <Button label="Modificar" icon="pi pi-pencil" outlined className="px-4 py-2" />
-          <Button label="Clonar" icon="pi pi-clone" outlined severity="secondary" className="px-4 py-2" />
-          <Button label="Borrar" icon="pi pi-trash" outlined severity="danger" className="px-4 py-2" />
+          {hasPermission('products.write') && (
+            <Button label="Modificar" icon="pi pi-pencil" outlined className="px-4 py-2" />
+          )}
+          {hasPermission('products.write') && (
+            <Button label="Clonar" icon="pi pi-clone" outlined severity="secondary" className="px-4 py-2" />
+          )}
+          {hasPermission('products.delete') && (
+            <Button label="Borrar" icon="pi pi-trash" outlined severity="danger" className="px-4 py-2" />
+          )}
         </div>
       </div>
 

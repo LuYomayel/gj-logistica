@@ -2,26 +2,26 @@ module.exports = {
   apps: [
     {
       name: 'gj-backend',
-      // Ruta al JS compilado (después de `npm run build` en backend/)
+      // JS compilado por `npm run build` en backend/
       script: 'dist/main.js',
       cwd: '/var/www/gj-logistica/backend',
       instances: 1,
       exec_mode: 'fork',
-      // Reinicio automático si consume más de 400MB
+      // Reinicio automático si consume más de 400 MB
       max_memory_restart: '400M',
       // Variables de entorno de producción
+      // ⚠️  El resto de variables (DB, JWT, MAIL) van en el .env del servidor
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 4001,
       },
       // Logs
       out_file: '/var/log/pm2/gj-backend.out.log',
       error_file: '/var/log/pm2/gj-backend.err.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
-      // Reiniciar si el proceso cae
+      // Política de reinicios
       autorestart: true,
       watch: false,
-      // Esperar 5s antes de marcar como online (tiempo para conectar a MySQL)
       min_uptime: '5s',
       max_restarts: 10,
     },

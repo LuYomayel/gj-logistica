@@ -1,0 +1,17 @@
+/*
+ * CSS Cascade Layer Order — PrimeReact + Tailwind v3
+ *
+ * Este archivo DEBE ser el primer import CSS en main.tsx.
+ * Declara el orden de capas antes de que cualquier librería las use,
+ * lo que garantiza que PrimeReact gane sobre el reset (base) y que
+ * las utilities de Tailwind puedan sobreescribir PrimeReact cuando
+ * se aplican explícitamente.
+ *
+ * Prioridad (mayor número = mayor prioridad):
+ *   base (1) < components (2) < primereact (3) < utilities (4)
+ *
+ * Sin esta declaración, PrimeReact (primera en aparecer con @layer primereact
+ * en theme.css) quedaría en posición 1 (la más baja), y Tailwind utilities
+ * lo sobreescribirían aunque no hubiera clases aplicadas en el elemento.
+ */
+@layer base, components, primereact, utilities;

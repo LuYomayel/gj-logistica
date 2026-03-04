@@ -134,6 +134,11 @@ async function main(): Promise<void> {
   console.log('   4. Verify notification_settings emails are correct');
   console.log('   5. Run smoke test: log in + open a product + open an order');
   console.log('');
+  console.log('📋 USER ROLE MAPPING APPLIED:');
+  console.log('   admin=1 (Dolibarr admin)       → super_admin   (full system access)');
+  console.log('   admin=0, no fk_soc (internal)  → client_admin  (manages Corteva tenant)');
+  console.log('   admin=0, fk_soc set (external) → client_user   (standard tenant user)');
+  console.log('');
 
   process.exit(failed > 0 ? 1 : 0);
 }

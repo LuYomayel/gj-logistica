@@ -13,6 +13,7 @@ import axios from 'axios';
 import { ordersApi, type AddOrderLinePayload } from '../api/ordersApi';
 import { productsApi } from '../../products/api/productsApi';
 import { StatusBadge } from '../../../shared/components/StatusBadge';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Order, OrderLine, Product } from '../../../shared/types';
 
 const apiErrMsg = (err: unknown, fallback: string): string => {
@@ -48,6 +49,7 @@ export function OrderDetail({ id }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useRef<Toast>(null);
+  const { hasPermission } = useAuth();
 
   // ── Agregar línea state ─────────────────────────────────────
   // productInput holds the typed string while searching, or the Product object when selected
@@ -143,6 +145,16 @@ export function OrderDetail({ id }: Props) {
       toast.current?.show({ severity: 'warn', summary: 'Atención', detail: 'Seleccioná un producto', life: 3000 });
       return;
     }
+    const available = product.stock ?? 0;
+    if (available < lineQty) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Stock insuficiente',
+        detail: `Disponible en almacén: ${available}, solicitado: ${lineQty}`,
+        life: 5000,
+      });
+      return;
+    }
     addLineMut.mutate({
       productId: product.id,
       quantity: lineQty,
@@ -219,9 +231,9 @@ export function OrderDetail({ id }: Props) {
             </p>
           </div>
 
-          {/* Action buttons */}
+          {/* Action buttons — gated by permission */}
           <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-            {status === 0 && (
+            {status === 0 && hasPermission('orders.validate') && (
               <Button
                 label="Validar"
                 icon="pi pi-check"
@@ -231,7 +243,7 @@ export function OrderDetail({ id }: Props) {
                 className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
               />
             )}
-            {(status === 1 || status === 2) && (
+            {(status === 1 || status === 2) && hasPermission('orders.close') && (
               <Button
                 label="Despachar"
                 icon="pi pi-send"
@@ -242,7 +254,7 @@ export function OrderDetail({ id }: Props) {
                 className="px-4 py-2"
               />
             )}
-            {(status === 0 || status === 1 || status === 2) && (
+            {(status === 0 || status === 1 || status === 2) && hasPermission('orders.cancel') && (
               <Button
                 label="Cancelar"
                 icon="pi pi-times"
@@ -254,7 +266,7 @@ export function OrderDetail({ id }: Props) {
                 className="px-4 py-2"
               />
             )}
-            {(status === 3 || status === -1) && (
+            {(status === 3 || status === -1) && hasPermission('orders.write') && (
               <Button
                 label="Reabrir"
                 icon="pi pi-refresh"
@@ -266,16 +278,30 @@ export function OrderDetail({ id }: Props) {
                 className="px-4 py-2"
               />
             )}
-            <Button
-              label="Clonar"
-              icon="pi pi-clone"
-              outlined
-              severity="secondary"
-              loading={cloneMut.isPending}
-              disabled={isMutating || cloneMut.isPending}
-              onClick={() => cloneMut.mutate()}
-              className="px-4 py-2"
-            />
+            {hasPermission('orders.write') && (
+              <Button
+                label="Clonar"
+                icon="pi pi-clone"
+                outlined
+                severity="secondary"
+                loading={cloneMut.isPending}
+                disabled={isMutating || cloneMut.isPending}
+                onClick={() => cloneMut.mutate()}
+                className="px-4 py-2"
+              />
+            )}
+            {status >= 1 && (
+              <Button
+                label="Descargar PDF"
+                icon="pi pi-file-pdf"
+                outlined
+                severity="secondary"
+                onClick={() => void ordersApi.downloadPdf(id, order.ref)}
+                className="px-4 py-2"
+                tooltip="Descargar PDF del pedido"
+                tooltipOptions={{ position: 'bottom' }}
+              />
+            )}
           </div>
         </div>
 
@@ -384,8 +410,8 @@ export function OrderDetail({ id }: Props) {
               bodyStyle={{ textAlign: 'right' }}
               body={(row: OrderLine) => formatAmount(row.totalHT)}
             />
-            {/* Remove button — only for drafts */}
-            {isDraft && (
+            {/* Remove button — only for drafts AND if user can write orders */}
+            {isDraft && hasPermission('orders.write') && (
               <Column
                 header=""
                 style={{ width: '50px', textAlign: 'center' }}
@@ -421,8 +447,8 @@ export function OrderDetail({ id }: Props) {
             </div>
           )}
 
-          {/* ── Agregar línea (only draft) ── */}
-          {isDraft && (
+          {/* ── Agregar línea (only draft + orders.write) ── */}
+          {isDraft && hasPermission('orders.write') && (
             <div className="border-t border-gray-200 bg-gray-50 px-4 py-4">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
                 Agregar nueva línea
