@@ -127,7 +127,7 @@ jobs:
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.DEPLOY_PORT }}" \
             frontend/dist/ \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/frontend/dist/
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/gj-logistica/frontend/dist/
 
       # ── DEPLOY CONFIGS ──────────────────────────────────────────────────────
       - name: Deploy ecosystem.config.js y nginx.conf
