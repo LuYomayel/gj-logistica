@@ -13,7 +13,7 @@ module.exports = {
       // ⚠️  El resto de variables (DB, JWT, MAIL) van en el .env del servidor
       env: {
         NODE_ENV: "production",
-        PORT: 4000,
+        PORT: 3000,
       },
       // Logs
       out_file: "/var/log/pm2/gj-backend.out.log",

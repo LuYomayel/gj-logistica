@@ -6,9 +6,9 @@
 #   2. deploy → solo en push a `main`, después de que pasen los tests
 #
 # Infraestructura:
-#   - Backend:  PM2 → NestJS en puerto 4001
-#   - Frontend: Nginx en puerto 3001 (sirve SPA + proxy /api/ → 4001)
-#   - Dominio:  gj-logistica.luciano-yomayel.com
+#   - Backend:  PM2 → NestJS en puerto 3000
+#   - Frontend: Nginx en puerto 80 (sirve SPA + proxy /api → 3000)
+#   - Server:   104.131.48.172
 # =============================================================================
 
 name: CI/CD — GJ Logística
@@ -188,6 +188,6 @@ jobs:
                echo ''
                echo '========================================='
                echo '  ✅ Deploy completado con éxito!'
-               echo '   URL: http://gj-logistica.luciano-yomayel.com:3001'
+               echo '   URL: http://104.131.48.172'
                echo '========================================='
               "
