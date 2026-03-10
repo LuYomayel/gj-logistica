@@ -8,7 +8,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
 import { Divider } from 'primereact/divider';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { permissionsApi, type CreatePermissionGroupDto } from '../api/permissionsApi';
+import { permissionsApi } from '../api/permissionsApi';
 import type { Permission, PermissionGroup } from '../../../shared/types';
 
 interface Props {

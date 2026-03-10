@@ -131,6 +131,8 @@ export interface User {
   entity: number;            // tenantId
   status: number;
   language: string | null;
+  supervisorId: number | null;
+  supervisor?: User | null;
   groups?: { id: number; name: string }[];
 }
 
@@ -138,8 +140,23 @@ export interface ThirdParty {
   id: number;
   name: string;
   clientCode: string | null;
+  taxId: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
+  postalCode: string | null;
+  city: string | null;
+  countryId: number | null;
+  provinceId: number | null;
+  isClient: number;
+  isSupplier: number;
+  status: number;
+  website: string | null;
+  notes: string | null;
+  entity: number;
+  createdAt: string;
+  updatedAt: string;
+  contacts?: Contact[];
 }
 
 export interface Warehouse {
@@ -182,6 +199,8 @@ export interface InventoryLine {
   createdByUserId: number | null;
   createdAt: string;
   updatedAt: string;
+  product?: { id: number; ref: string; label: string | null };
+  warehouse?: { id: number; name: string };
 }
 
 export interface Inventory {

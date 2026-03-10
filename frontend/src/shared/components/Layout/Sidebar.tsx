@@ -26,9 +26,10 @@ const navSections: NavSection[] = [
   {
     section: 'Comercial',
     items: [
-      { label: 'Pedidos',       icon: 'pi pi-file-edit',  to: '/orders',       permission: 'orders.read' },
-      { label: 'Stats Pedidos', icon: 'pi pi-chart-line', to: '/orders/stats', permission: 'orders.read' },
-      { label: 'Contactos',     icon: 'pi pi-users',      to: '/contacts',     permission: 'contacts.read' },
+      { label: 'Pedidos',       icon: 'pi pi-file-edit',  to: '/orders',         permission: 'orders.read' },
+      { label: 'Stats Pedidos', icon: 'pi pi-chart-line', to: '/orders/stats',   permission: 'orders.read' },
+      { label: 'Terceros',      icon: 'pi pi-building',   to: '/third-parties',  permission: 'third_parties.read' },
+      { label: 'Contactos',     icon: 'pi pi-users',      to: '/contacts',       permission: 'contacts.read' },
     ],
   },
   {

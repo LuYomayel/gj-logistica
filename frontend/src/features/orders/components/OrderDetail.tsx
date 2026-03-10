@@ -12,6 +12,7 @@ import { useRef, useState } from 'react';
 import axios from 'axios';
 import { ordersApi, type AddOrderLinePayload } from '../api/ordersApi';
 import { productsApi } from '../../products/api/productsApi';
+import { EditOrderDialog } from './EditOrderDialog';
 import { StatusBadge } from '../../../shared/components/StatusBadge';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Order, OrderLine, Product } from '../../../shared/types';
@@ -50,6 +51,8 @@ export function OrderDetail({ id }: Props) {
   const queryClient = useQueryClient();
   const toast = useRef<Toast>(null);
   const { hasPermission } = useAuth();
+
+  const [showEdit, setShowEdit] = useState(false);
 
   // ── Agregar línea state ─────────────────────────────────────
   // productInput holds the typed string while searching, or the Product object when selected
@@ -211,6 +214,15 @@ export function OrderDetail({ id }: Props) {
     <>
       <Toast ref={toast} />
 
+      {order && isDraft && (
+        <EditOrderDialog
+          visible={showEdit}
+          onHide={() => setShowEdit(false)}
+          order={order}
+          onSaved={() => invalidate()}
+        />
+      )}
+
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -233,6 +245,16 @@ export function OrderDetail({ id }: Props) {
 
           {/* Action buttons — gated by permission */}
           <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+            {status === 0 && hasPermission('orders.write') && (
+              <Button
+                label="Editar"
+                icon="pi pi-pencil"
+                outlined
+                disabled={isMutating}
+                onClick={() => setShowEdit(true)}
+                className="px-4 py-2"
+              />
+            )}
             {status === 0 && hasPermission('orders.validate') && (
               <Button
                 label="Validar"

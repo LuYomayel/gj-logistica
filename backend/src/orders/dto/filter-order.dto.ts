@@ -45,6 +45,11 @@ export class FilterOrderDto {
   @Transform(({ value }) => value === 'true' || value === true)
   isDraft?: boolean;
 
+  @ApiPropertyOptional({ description: 'Referencia del pedido (búsqueda parcial)' })
+  @IsString()
+  @IsOptional()
+  ref?: string;
+
   @ApiPropertyOptional({ description: 'Ref. de cliente (búsqueda parcial)' })
   @IsString()
   @IsOptional()

@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
 import { Tag } from 'primereact/tag';
+import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { productsApi } from '../api/productsApi';
+import { EditProductDialog } from './EditProductDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Product } from '../../../shared/types';
 
@@ -28,12 +31,75 @@ interface Props {
 
 export function ProductDetail({ id }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['products', id],
     queryFn: () => productsApi.get(id),
   });
+
+  const cloneMut = useMutation({
+    mutationFn: () => {
+      if (!product) throw new Error('No product');
+      return productsApi.create({
+        ref: product.ref + '-CLON',
+        label: product.label ?? undefined,
+        description: product.description ?? undefined,
+        barcode: undefined, // Don't clone barcode (must be unique)
+        price: product.price ? parseFloat(product.price) : undefined,
+        vatRate: product.vatRate ? parseFloat(product.vatRate) : undefined,
+        isSellable: product.isSellable,
+        stockAlertThreshold: product.stockAlertThreshold,
+        desiredStock: product.desiredStock,
+        talle: product.talle ?? undefined,
+        rubro: product.rubro ?? undefined,
+        subrubro: product.subrubro ?? undefined,
+        marca: product.marca ?? undefined,
+        color: product.color ?? undefined,
+        posicion: product.posicion ?? undefined,
+        nivelEconomico: product.nivelEconomico ?? undefined,
+        keywords: product.keywords ?? undefined,
+        eanInterno: undefined, // Don't clone EAN (should be unique)
+      });
+    },
+    onSuccess: (cloned) => {
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      navigate(`/products/${cloned.id}`);
+    },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => productsApi.remove(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      navigate('/products');
+    },
+  });
+
+  const handleDelete = () => {
+    confirmDialog({
+      message: `¿Eliminar el producto "${product?.ref}"? Esta acción no se puede deshacer.`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClassName: 'bg-red-600 text-white border-red-600',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      accept: () => deleteMut.mutate(),
+    });
+  };
+
+  const handleClone = () => {
+    confirmDialog({
+      message: `¿Clonar el producto "${product?.ref}"? Se creará una copia con ref "${product?.ref}-CLON".`,
+      header: 'Confirmar clonación',
+      icon: 'pi pi-clone',
+      acceptLabel: 'Clonar',
+      rejectLabel: 'Cancelar',
+      accept: () => cloneMut.mutate(),
+    });
+  };
 
   if (isLoading) {
     return (
@@ -56,8 +122,23 @@ export function ProductDetail({ id }: Props) {
   const formatPrice = (p: string | null) =>
     p ? `$${parseFloat(p).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-';
 
+  const isMutating = cloneMut.isPending || deleteMut.isPending;
+
   return (
     <div className="flex flex-col gap-4">
+      <ConfirmDialog />
+
+      {showEdit && (
+        <EditProductDialog
+          visible={showEdit}
+          onHide={() => setShowEdit(false)}
+          product={product}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: ['products', id] });
+          }}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -85,13 +166,38 @@ export function ProductDetail({ id }: Props) {
 
         <div className="flex gap-2 shrink-0">
           {hasPermission('products.write') && (
-            <Button label="Modificar" icon="pi pi-pencil" outlined className="px-4 py-2" />
+            <Button
+              label="Modificar"
+              icon="pi pi-pencil"
+              outlined
+              className="px-4 py-2"
+              onClick={() => setShowEdit(true)}
+              disabled={isMutating}
+            />
           )}
           {hasPermission('products.write') && (
-            <Button label="Clonar" icon="pi pi-clone" outlined severity="secondary" className="px-4 py-2" />
+            <Button
+              label="Clonar"
+              icon="pi pi-clone"
+              outlined
+              severity="secondary"
+              className="px-4 py-2"
+              onClick={handleClone}
+              loading={cloneMut.isPending}
+              disabled={isMutating}
+            />
           )}
           {hasPermission('products.delete') && (
-            <Button label="Borrar" icon="pi pi-trash" outlined severity="danger" className="px-4 py-2" />
+            <Button
+              label="Borrar"
+              icon="pi pi-trash"
+              outlined
+              severity="danger"
+              className="px-4 py-2"
+              onClick={handleDelete}
+              loading={deleteMut.isPending}
+              disabled={isMutating}
+            />
           )}
         </div>
       </div>

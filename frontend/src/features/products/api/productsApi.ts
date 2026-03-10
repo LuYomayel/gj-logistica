@@ -51,6 +51,13 @@ export const productsApi = {
     const { data } = await apiClient.post<Product>('/products', payload);
     return data;
   },
+  update: async (id: number, payload: Partial<CreateProductPayload>): Promise<Product> => {
+    const { data } = await apiClient.patch<Product>(`/products/${id}`, payload);
+    return data;
+  },
+  remove: async (id: number): Promise<void> => {
+    await apiClient.delete(`/products/${id}`);
+  },
   getStats: async (filters: ProductStatsFilters = {}): Promise<ProductStats> => {
     const { data } = await apiClient.get('/products/stats', { params: filters });
     // Backend returns the object directly (not paginated)

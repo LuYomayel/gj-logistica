@@ -11,6 +11,7 @@ export interface CreateUserDto {
   userType?: UserType;
   entity?: number;  // tenantId
   isAdmin?: boolean;
+  supervisorId?: number;
 }
 
 export interface UpdateUserDto {

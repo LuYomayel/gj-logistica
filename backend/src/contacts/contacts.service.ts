@@ -14,12 +14,16 @@ export class ContactsService {
     @InjectRepository(Contact) private repo: Repository<Contact>,
   ) {}
 
-  async findAll(search?: string, tenantId?: number | null): Promise<Contact[]> {
+  async findAll(search?: string, tenantId?: number | null, thirdPartyId?: number): Promise<Contact[]> {
+    const tenantFilter = tenantId !== null && tenantId !== undefined ? { entity: tenantId } : {};
+    const tpFilter = thirdPartyId ? { thirdPartyId } : {};
+    const baseFilter = { ...tenantFilter, ...tpFilter };
+
     if (search) {
       const where = [
-        { firstName: ILike(`%${search}%`), ...(tenantId !== null && tenantId !== undefined && { entity: tenantId }) },
-        { lastName: ILike(`%${search}%`), ...(tenantId !== null && tenantId !== undefined && { entity: tenantId }) },
-        { nombreFantasia: ILike(`%${search}%`), ...(tenantId !== null && tenantId !== undefined && { entity: tenantId }) },
+        { firstName: ILike(`%${search}%`), ...baseFilter },
+        { lastName: ILike(`%${search}%`), ...baseFilter },
+        { nombreFantasia: ILike(`%${search}%`), ...baseFilter },
       ];
       return this.repo.find({
         where,
@@ -27,7 +31,7 @@ export class ContactsService {
       });
     }
     return this.repo.find({
-      where: tenantId !== null && tenantId !== undefined ? { entity: tenantId } : {},
+      where: baseFilter,
       order: { lastName: 'ASC' },
     });
   }
