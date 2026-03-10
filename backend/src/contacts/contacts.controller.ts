@@ -19,11 +19,14 @@ export class ContactsController {
   @RequiresPermission('contacts.read')
   @ApiOperation({ summary: 'Listar contactos' })
   @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'thirdPartyId', required: false })
   findAll(
     @Query('search') search?: string,
+    @Query('thirdPartyId') thirdPartyId?: string,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
-    return this.service.findAll(search, user?.tenantId ?? null);
+    const tpId = thirdPartyId ? Number(thirdPartyId) : undefined;
+    return this.service.findAll(search, user?.tenantId ?? null, tpId);
   }
 
   @Get(':id')

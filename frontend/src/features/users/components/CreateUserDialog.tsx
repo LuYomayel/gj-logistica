@@ -30,6 +30,7 @@ interface FormData {
   phone: string;
   userType: UserType;
   entity: number | null;
+  supervisorId: number | null;
 }
 
 const USER_TYPE_OPTIONS_SUPER: { label: string; value: UserType }[] = [
@@ -61,6 +62,7 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
       phone: '',
       userType: 'client_user',
       entity: tenantId ?? null,
+      supervisorId: null,
     },
   });
 
@@ -70,6 +72,21 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
     queryFn: tenantsApi.list,
     enabled: visible && !isFixedTenant,
   });
+
+  // Load users for supervisor dropdown
+  const { data: usersData } = useQuery({
+    queryKey: ['users', { limit: 200 }],
+    queryFn: () => usersApi.list({ limit: 200 }),
+    enabled: visible,
+  });
+
+  const supervisorOptions = [
+    { label: 'Sin supervisor', value: null },
+    ...(usersData?.data ?? []).map((u) => ({
+      label: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.username,
+      value: u.id,
+    })),
+  ];
 
   useEffect(() => {
     if (visible) {
@@ -82,6 +99,7 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
         phone: '',
         userType: 'client_user',
         entity: effectiveTenantId ?? null,
+        supervisorId: null,
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,6 +116,7 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
         phone: data.phone || undefined,
         userType: data.userType,
         entity: data.entity ?? undefined,
+        supervisorId: data.supervisorId ?? undefined,
       };
       return usersApi.create(dto);
     },
@@ -214,6 +233,28 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
               name="phone"
               control={control}
               render={({ field }) => <InputText {...field} className="w-full" placeholder="+54 11 1234-5678" />}
+            />
+          </div>
+
+          {/* Supervisor */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Supervisor</label>
+            <Controller
+              name="supervisorId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value as number | null)}
+                  options={supervisorOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  className="w-full"
+                  placeholder="Sin supervisor"
+                  showClear
+                  filter
+                />
+              )}
             />
           </div>
 

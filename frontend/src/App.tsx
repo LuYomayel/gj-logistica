@@ -13,12 +13,15 @@ import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderStatsPage from './pages/OrderStatsPage';
 import ContactsPage from './pages/ContactsPage';
+import ContactDetailPage from './pages/ContactDetailPage';
 import UsersPage from './pages/UsersPage';
 import InventoriesPage from './pages/InventoriesPage';
 import InventoryDetailPage from './pages/InventoryDetailPage';
 import StockAtDatePage from './pages/StockAtDatePage';
 import WarehousesPage from './pages/WarehousesPage';
 import WarehouseDetailPage from './pages/WarehouseDetailPage';
+import ThirdPartiesPage from './pages/ThirdPartiesPage';
+import ThirdPartyDetailPage from './pages/ThirdPartyDetailPage';
 import TenantsPage from './pages/admin/TenantsPage';
 import TenantDetailPage from './pages/admin/TenantDetailPage';
 import PermissionGroupsPage from './pages/admin/PermissionGroupsPage';
@@ -55,9 +58,16 @@ export default function App() {
             <Route path="/products/:id" element={<ProductDetailPage />} />
           </Route>
 
+          {/* Third Parties — requires third_parties.read */}
+          <Route element={<PermissionRoute permission="third_parties.read" />}>
+            <Route path="/third-parties" element={<ThirdPartiesPage />} />
+            <Route path="/third-parties/:id" element={<ThirdPartyDetailPage />} />
+          </Route>
+
           {/* Contacts — requires contacts.read */}
           <Route element={<PermissionRoute permission="contacts.read" />}>
             <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/contacts/:id" element={<ContactDetailPage />} />
           </Route>
 
           {/* Warehouses — requires stock.read */}

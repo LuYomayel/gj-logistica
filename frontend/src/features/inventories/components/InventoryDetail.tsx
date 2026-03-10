@@ -1,28 +1,60 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
-import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { AutoComplete } from 'primereact/autocomplete';
+import type { AutoCompleteCompleteEvent } from 'primereact/autocomplete';
 import { InputNumber } from 'primereact/inputnumber';
 import { Tag } from 'primereact/tag';
 import { Skeleton } from 'primereact/skeleton';
+import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { inventoriesApi, type AddLinePayload } from '../api/inventoriesApi';
-import type { InventoryLine } from '../../../shared/types';
+import { warehousesApi } from '../../warehouses/api/warehousesApi';
+import { productsApi } from '../../products/api/productsApi';
+import { useAuth } from '../../../shared/hooks/useAuth';
+import type { InventoryLine, Product } from '../../../shared/types';
 import { INVENTORY_STATUS } from '../../../shared/types';
+
+const apiErrMsg = (err: unknown, fallback: string): string => {
+  if (axios.isAxiosError(err)) {
+    const msg = err.response?.data?.message;
+    if (typeof msg === 'string') return msg;
+    if (Array.isArray(msg)) return msg.join(', ');
+  }
+  return fallback;
+};
 
 export function InventoryDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const toast = useRef<Toast>(null);
   const inventoryId = Number(id);
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('stock.write_inventories');
 
   const [showAddLine, setShowAddLine] = useState(false);
-  const [lineForm, setLineForm] = useState<AddLinePayload>({ warehouseId: 0, productId: 0, realQuantity: 0 });
+  const [lineWarehouseId, setLineWarehouseId] = useState<number | null>(null);
+  const [lineProductInput, setLineProductInput] = useState<string | Product>('');
+  const [lineProductSuggestions, setLineProductSuggestions] = useState<Product[]>([]);
+  const [lineQty, setLineQty] = useState<number>(0);
   const [editingLine, setEditingLine] = useState<{ id: number; realQuantity: number } | null>(null);
+
+  const selectedProduct: Product | null =
+    lineProductInput !== '' && typeof lineProductInput !== 'string'
+      ? (lineProductInput as Product)
+      : null;
+
+  const showSuccess = (detail: string) =>
+    toast.current?.show({ severity: 'success', summary: 'Éxito', detail, life: 3000 });
+  const showError = (detail: string) =>
+    toast.current?.show({ severity: 'error', summary: 'Error', detail, life: 5000 });
 
   const { data: inventory, isLoading } = useQuery({
     queryKey: ['inventory', inventoryId],
@@ -30,13 +62,34 @@ export function InventoryDetail() {
     enabled: !!inventoryId,
   });
 
+  // Load warehouses for dropdown
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => warehousesApi.list(),
+  });
+
+  const warehousesList = warehousesData?.data ?? [];
+
+  const warehouseOptions = warehousesList.map((w) => ({
+    label: w.name,
+    value: w.id,
+  }));
+
+  // Build a map for displaying warehouse names in the table
+  const warehouseMap = new Map<number, string>();
+  warehousesList.forEach((w) => warehouseMap.set(w.id, w.name));
+
   const addLineMutation = useMutation({
     mutationFn: (payload: AddLinePayload) => inventoriesApi.addLine(inventoryId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inventory', inventoryId] });
       setShowAddLine(false);
-      setLineForm({ warehouseId: 0, productId: 0, realQuantity: 0 });
+      setLineWarehouseId(null);
+      setLineProductInput('');
+      setLineQty(0);
+      showSuccess('Línea agregada');
     },
+    onError: (err) => showError(apiErrMsg(err, 'Error al agregar la línea')),
   });
 
   const updateLineMutation = useMutation({
@@ -45,28 +98,80 @@ export function InventoryDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inventory', inventoryId] });
       setEditingLine(null);
+      showSuccess('Cantidad actualizada');
     },
+    onError: (err) => showError(apiErrMsg(err, 'Error al actualizar la línea')),
   });
 
   const removeLineMutation = useMutation({
     mutationFn: (lineId: number) => inventoriesApi.removeLine(inventoryId, lineId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory', inventoryId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory', inventoryId] });
+      showSuccess('Línea eliminada');
+    },
+    onError: (err) => showError(apiErrMsg(err, 'Error al eliminar la línea')),
   });
 
   const validateMutation = useMutation({
     mutationFn: () => inventoriesApi.validate(inventoryId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory', inventoryId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory', inventoryId] });
+      showSuccess('Inventario validado — movimientos de stock generados');
+    },
+    onError: (err) => showError(apiErrMsg(err, 'Error al validar el inventario')),
   });
 
   const resetMutation = useMutation({
     mutationFn: () => inventoriesApi.resetToDraft(inventoryId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory', inventoryId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory', inventoryId] });
+      showSuccess('Inventario devuelto a borrador');
+    },
+    onError: (err) => showError(apiErrMsg(err, 'Error al devolver a borrador')),
   });
 
   const removeMutation = useMutation({
     mutationFn: () => inventoriesApi.remove(inventoryId),
-    onSuccess: () => navigate('/inventories'),
+    onSuccess: () => {
+      showSuccess('Inventario eliminado');
+      navigate('/inventories');
+    },
+    onError: (err) => showError(apiErrMsg(err, 'Error al eliminar el inventario')),
   });
+
+  // Product search for autocomplete
+  const searchProducts = async (event: AutoCompleteCompleteEvent) => {
+    const query = event.query.trim();
+    if (query.length < 1) {
+      setLineProductSuggestions([]);
+      return;
+    }
+    try {
+      const result = await productsApi.list({ search: query, limit: 30 });
+      setLineProductSuggestions(result.data);
+    } catch {
+      setLineProductSuggestions([]);
+    }
+  };
+
+  const productItemTemplate = (product: Product) => (
+    <div className="flex items-center gap-2 py-1">
+      <span className="font-mono text-xs text-gray-500 shrink-0">{product.ref}</span>
+      <span className="text-sm truncate">{product.label}</span>
+      <span className="ml-auto text-xs shrink-0 font-medium text-gray-400">
+        Stock: {product.stock}
+      </span>
+    </div>
+  );
+
+  const handleAddLine = () => {
+    if (!lineWarehouseId || !selectedProduct) return;
+    addLineMutation.mutate({
+      warehouseId: lineWarehouseId,
+      productId: selectedProduct.id,
+      realQuantity: lineQty,
+    });
+  };
 
   if (isLoading || !inventory) return <Skeleton height="400px" />;
 
@@ -110,7 +215,7 @@ export function InventoryDetail() {
   };
 
   const actionsBody = (row: InventoryLine) => {
-    if (!isDraft) return null;
+    if (!isDraft || !canWrite) return null;
     return (
       <div className="flex gap-1">
         <Button
@@ -133,6 +238,7 @@ export function InventoryDetail() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Toast ref={toast} />
       <ConfirmDialog />
 
       {/* Header */}
@@ -158,9 +264,9 @@ export function InventoryDetail() {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2">
-          {isDraft && (
+        {/* Actions — only for users with write permission */}
+        <div className="flex gap-2">
+          {isDraft && canWrite && (
             <>
               <Button
                 label="Agregar línea"
@@ -187,7 +293,7 @@ export function InventoryDetail() {
               />
             </>
           )}
-          {!isDraft && (
+          {!isDraft && canWrite && (
             <Button
               label="Volver a borrador"
               icon="pi pi-undo"
@@ -215,16 +321,22 @@ export function InventoryDetail() {
           scrollable
         >
           <Column
-            header="Almacén ID"
+            header="Almacén"
             field="warehouseId"
-            body={(r: InventoryLine) => r.warehouseId ?? '-'}
-            style={{ width: '110px' }}
+            body={(r: InventoryLine) => {
+              if (r.warehouse) return r.warehouse.name;
+              if (r.warehouseId) return warehouseMap.get(r.warehouseId) ?? `ID: ${r.warehouseId}`;
+              return '-';
+            }}
+            style={{ width: '150px' }}
           />
           <Column
-            header="Producto ID"
+            header="Producto"
             field="productId"
-            body={(r: InventoryLine) => r.productId ?? '-'}
-            style={{ width: '110px', fontFamily: 'monospace' }}
+            body={(r: InventoryLine) => {
+              if (r.product) return `${r.product.ref} — ${r.product.label ?? ''}`;
+              return r.productId ? `ID: ${r.productId}` : '-';
+            }}
           />
           <Column
             header="Cant. esperada"
@@ -252,7 +364,9 @@ export function InventoryDetail() {
             style={{ width: '100px', textAlign: 'right' }}
             bodyStyle={{ textAlign: 'right' }}
           />
-          <Column header="Acciones" body={actionsBody} style={{ width: '90px' }} />
+          {canWrite && (
+            <Column header="Acciones" body={actionsBody} style={{ width: '90px' }} />
+          )}
         </DataTable>
       </div>
 
@@ -261,37 +375,51 @@ export function InventoryDetail() {
         header="Agregar línea"
         visible={showAddLine}
         onHide={() => setShowAddLine(false)}
-        style={{ width: '400px' }}
-        breakpoints={{ '575px': '95vw' }}
+        style={{ width: '450px' }}
       >
         <div className="flex flex-col gap-4 pt-2">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">ID Almacén *</label>
-            <InputText
-              value={lineForm.warehouseId ? String(lineForm.warehouseId) : ''}
-              onChange={(e) =>
-                setLineForm((f) => ({ ...f, warehouseId: Number(e.target.value) || 0 }))
-              }
-              placeholder="ej: 1"
+            <label className="text-sm font-medium text-gray-700">Almacén *</label>
+            <Dropdown
+              value={lineWarehouseId}
+              options={warehouseOptions}
+              onChange={(e) => setLineWarehouseId(e.value)}
+              placeholder="Seleccionar almacén..."
+              className="w-full"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">ID Producto *</label>
-            <InputText
-              value={lineForm.productId ? String(lineForm.productId) : ''}
-              onChange={(e) =>
-                setLineForm((f) => ({ ...f, productId: Number(e.target.value) || 0 }))
-              }
-              placeholder="ej: 42"
+            <label className="text-sm font-medium text-gray-700">Producto *</label>
+            <AutoComplete
+              value={lineProductInput}
+              field="label"
+              suggestions={lineProductSuggestions}
+              completeMethod={searchProducts}
+              itemTemplate={productItemTemplate}
+              selectedItemTemplate={(p: Product) => `${p.ref} — ${p.label ?? ''}`}
+              onChange={(e) => setLineProductInput(e.value as string | Product)}
+              placeholder="Buscar por ref o nombre..."
+              minLength={1}
+              delay={200}
+              className="w-full"
+              inputClassName="w-full"
             />
+            {selectedProduct && (
+              <p className="text-xs text-gray-500 mt-1">
+                <span className="font-medium">{selectedProduct.ref}</span>
+                {selectedProduct.label ? ` · ${selectedProduct.label}` : ''}
+                {' · '}
+                <span className="font-medium text-green-600">
+                  Stock: {selectedProduct.stock}
+                </span>
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Cantidad real contada *</label>
             <InputNumber
-              value={lineForm.realQuantity}
-              onValueChange={(e) =>
-                setLineForm((f) => ({ ...f, realQuantity: e.value ?? 0 }))
-              }
+              value={lineQty}
+              onValueChange={(e) => setLineQty(e.value ?? 0)}
               min={0}
               mode="decimal"
               minFractionDigits={0}
@@ -308,8 +436,8 @@ export function InventoryDetail() {
               label="Agregar"
               icon="pi pi-plus"
               loading={addLineMutation.isPending}
-              disabled={!lineForm.warehouseId || !lineForm.productId}
-              onClick={() => addLineMutation.mutate(lineForm)}
+              disabled={!lineWarehouseId || !selectedProduct}
+              onClick={handleAddLine}
               className="bg-blue-600 text-white border-blue-600"
             />
           </div>

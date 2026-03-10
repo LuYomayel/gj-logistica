@@ -54,6 +54,10 @@ export const ordersApi = {
     const { data } = await apiClient.post<Order>('/orders', payload);
     return data;
   },
+  update: async (id: number, payload: Partial<CreateOrderPayload>): Promise<Order> => {
+    const { data } = await apiClient.patch<Order>(`/orders/${id}`, payload);
+    return data;
+  },
   addLine: async (id: number, payload: AddOrderLinePayload): Promise<Order> => {
     const { data } = await apiClient.post<Order>(`/orders/${id}/lines`, payload);
     return data;

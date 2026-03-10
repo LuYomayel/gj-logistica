@@ -6,10 +6,12 @@ import type { DataTablePageEvent } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
+import { Calendar } from "primereact/calendar";
 import { Button } from "primereact/button";
 import { Skeleton } from "primereact/skeleton";
 import { Tooltip } from "primereact/tooltip";
 import { ordersApi, type OrderFilters } from "../api/ordersApi";
+import { thirdPartiesApi } from "../../third-parties/api/thirdPartiesApi";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { CreateOrderDialog } from "./CreateOrderDialog";
 import { ExportOrdersDialog } from "./ExportOrdersDialog";
@@ -31,6 +33,10 @@ export function OrdersTable() {
   const [filters, setFilters] = useState<OrderFilters>({ page: 1, limit: 20 });
   const [refInput, setRefInput] = useState("");
   const [statusInput, setStatusInput] = useState<number | string>("");
+  const [thirdPartyInput, setThirdPartyInput] = useState<number | null>(null);
+  const [dateFromInput, setDateFromInput] = useState<Date | null>(null);
+  const [dateToInput, setDateToInput] = useState<Date | null>(null);
+  const [clientRefInput, setClientRefInput] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [showExport, setShowExport] = useState(false);
 
@@ -38,6 +44,17 @@ export function OrdersTable() {
     queryKey: ["orders", filters],
     queryFn: () => ordersApi.list(filters),
   });
+
+  // Load third parties for filter dropdown
+  const { data: tpData } = useQuery({
+    queryKey: ["third-parties", { limit: 500 }],
+    queryFn: () => thirdPartiesApi.list({ limit: 500 }),
+  });
+
+  const tpOptions = [
+    { label: "Todos", value: null },
+    ...(tpData?.data ?? []).map((tp) => ({ label: tp.name, value: tp.id })),
+  ];
 
   const orders = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -48,12 +65,20 @@ export function OrdersTable() {
       limit: 20,
       ref: refInput || undefined,
       status: statusInput !== "" ? statusInput : undefined,
+      thirdPartyId: thirdPartyInput ?? undefined,
+      clientRef: clientRefInput || undefined,
+      dateFrom: dateFromInput ? dateFromInput.toISOString().split("T")[0] : undefined,
+      dateTo: dateToInput ? dateToInput.toISOString().split("T")[0] : undefined,
     });
   };
 
   const clearFilters = () => {
     setRefInput("");
     setStatusInput("");
+    setThirdPartyInput(null);
+    setDateFromInput(null);
+    setDateToInput(null);
+    setClientRefInput("");
     setFilters({ page: 1, limit: 20 });
   };
 
@@ -116,7 +141,7 @@ export function OrdersTable() {
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[160px]">
+          <div className="flex flex-col gap-1 min-w-[140px]">
             <label className="text-xs font-medium text-gray-600">Ref</label>
             <InputText
               value={refInput}
@@ -126,13 +151,54 @@ export function OrdersTable() {
               className="text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[160px]">
+          <div className="flex flex-col gap-1 min-w-[130px]">
             <label className="text-xs font-medium text-gray-600">Estado</label>
             <Dropdown
               value={statusInput}
               options={STATUS_OPTIONS}
               onChange={(e) => setStatusInput(e.value)}
               placeholder="Todos"
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1 min-w-[180px]">
+            <label className="text-xs font-medium text-gray-600">Tercero</label>
+            <Dropdown
+              value={thirdPartyInput}
+              options={tpOptions}
+              onChange={(e) => setThirdPartyInput(e.value)}
+              placeholder="Todos"
+              filter
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1 min-w-[130px]">
+            <label className="text-xs font-medium text-gray-600">Ref cliente</label>
+            <InputText
+              value={clientRefInput}
+              onChange={(e) => setClientRefInput(e.target.value)}
+              placeholder="Ref. cliente"
+              onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1 min-w-[135px]">
+            <label className="text-xs font-medium text-gray-600">Fecha desde</label>
+            <Calendar
+              value={dateFromInput}
+              onChange={(e) => setDateFromInput(e.value ?? null)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1 min-w-[135px]">
+            <label className="text-xs font-medium text-gray-600">Fecha hasta</label>
+            <Calendar
+              value={dateToInput}
+              onChange={(e) => setDateToInput(e.value ?? null)}
+              dateFormat="dd/mm/yy"
+              showIcon
               className="text-sm"
             />
           </div>
@@ -181,7 +247,7 @@ export function OrdersTable() {
           <Column
             field="clientRef"
             header="Ref cliente"
-            style={{ width: "130px" }}
+            style={{ width: "120px" }}
             body={(row: Order) => row.clientRef ?? "-"}
           />
           <Column
@@ -209,6 +275,18 @@ export function OrdersTable() {
             body={(row: Order) => formatAmount(row.totalHT)}
           />
           <Column
+            field="nroSeguimiento"
+            header="Nro. seguimiento"
+            style={{ width: "140px" }}
+            body={(row: Order) => row.nroSeguimiento ?? "-"}
+          />
+          <Column
+            field="agencia"
+            header="Agencia"
+            style={{ width: "120px" }}
+            body={(row: Order) => row.agencia ?? "-"}
+          />
+          <Column
             field="status"
             header="Estado"
             style={{ width: "130px" }}
@@ -217,7 +295,7 @@ export function OrdersTable() {
           <Column
             field="createdBy"
             header="Autor"
-            style={{ width: "130px" }}
+            style={{ width: "120px" }}
             body={(row: Order) =>
               row.createdBy
                 ? `${row.createdBy.firstName ?? ""} ${row.createdBy.lastName ?? ""}`.trim() ||

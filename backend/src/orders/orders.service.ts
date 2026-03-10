@@ -47,7 +47,7 @@ export class OrdersService {
   ) {}
 
   async findAll(filter: FilterOrderDto, tenantId: number | null): Promise<PaginatedOrders> {
-    const { status, thirdPartyId, warehouseId, isDraft, dateFrom, dateTo, page = 1, limit = 50 } = filter;
+    const { status, thirdPartyId, warehouseId, isDraft, ref, clientRef, dateFrom, dateTo, page = 1, limit = 50 } = filter;
 
     const qb = this.orderRepo
       .createQueryBuilder('o')
@@ -61,6 +61,8 @@ export class OrdersService {
     if (thirdPartyId) qb.andWhere('o.thirdPartyId = :thirdPartyId', { thirdPartyId });
     if (warehouseId) qb.andWhere('o.warehouseId = :warehouseId', { warehouseId });
     if (isDraft !== undefined) qb.andWhere('o.isDraft = :isDraft', { isDraft });
+    if (ref) qb.andWhere('o.ref LIKE :ref', { ref: `%${ref}%` });
+    if (clientRef) qb.andWhere('o.clientRef LIKE :clientRef', { clientRef: `%${clientRef}%` });
     if (dateFrom) qb.andWhere('o.orderDate >= :dateFrom', { dateFrom });
     if (dateTo) qb.andWhere('o.orderDate <= :dateTo', { dateTo });
     if (tenantId !== null) qb.andWhere('o.entity = :tenantId', { tenantId });
