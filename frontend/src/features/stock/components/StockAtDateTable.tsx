@@ -40,7 +40,7 @@ export function StockAtDateTable() {
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#1b3a5f]">Stock histórico a fecha</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Stock histórico a fecha</h1>
         <p className="text-gray-500 text-sm">
           Consulta el stock que existía en una fecha determinada
         </p>
@@ -49,7 +49,7 @@ export function StockAtDateTable() {
       {/* Filter */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 w-full sm:w-auto">
             <label className="text-xs font-medium text-gray-600">Fecha de consulta</label>
             <Calendar
               value={selectedDate}
@@ -86,10 +86,11 @@ export function StockAtDateTable() {
             <strong>{new Date(queryDate + 'T00:00:00').toLocaleDateString('es-AR')}</strong>
             {' '}— {rows?.length ?? 0} productos
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
             <DataTable
               value={rows ?? []}
               size="small"
+              scrollable
               paginator
               rows={50}
               rowsPerPageOptions={[25, 50, 100]}

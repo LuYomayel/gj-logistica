@@ -54,18 +54,19 @@ export function PermissionGroupsTable() {
       <Toast ref={toast} />
       <ConfirmDialog />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">Grupos de Permisos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Grupos de Permisos</h1>
           <p className="text-gray-500 text-sm">{groups.length} grupos registrados</p>
         </div>
         <Button label="Nuevo Grupo" icon="pi pi-plus" onClick={handleCreate} />
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <DataTable
           value={groups}
           size="small"
+          scrollable
           emptyMessage="No hay grupos"
           onRowClick={(e) => navigate(`/admin/permission-groups/${(e.data as PermissionGroup).id}`)}
           rowClassName={() => 'cursor-pointer hover:bg-gray-50'}

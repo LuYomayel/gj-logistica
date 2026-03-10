@@ -136,7 +136,7 @@ export function InventoryDetail() {
       <ConfirmDialog />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
             <button
@@ -145,7 +145,7 @@ export function InventoryDetail() {
             >
               <i className="pi pi-arrow-left text-sm" />
             </button>
-            <h1 className="text-2xl font-bold text-[#1b3a5f] font-mono">{inventory.ref}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f] font-mono">{inventory.ref}</h1>
             <Tag value={statusInfo.label} severity={statusInfo.severity} />
           </div>
           {inventory.label && (
@@ -159,7 +159,7 @@ export function InventoryDetail() {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {isDraft && (
             <>
               <Button
@@ -202,7 +202,7 @@ export function InventoryDetail() {
       </div>
 
       {/* Lines table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <span className="font-semibold text-gray-700 text-sm">
             Líneas del inventario ({lines.length})
@@ -212,6 +212,7 @@ export function InventoryDetail() {
           value={lines}
           size="small"
           emptyMessage={isDraft ? 'Sin líneas — agregar productos arriba' : 'Sin líneas registradas'}
+          scrollable
         >
           <Column
             header="Almacén ID"
@@ -261,6 +262,7 @@ export function InventoryDetail() {
         visible={showAddLine}
         onHide={() => setShowAddLine(false)}
         style={{ width: '400px' }}
+        breakpoints={{ '575px': '95vw' }}
       >
         <div className="flex flex-col gap-4 pt-2">
           <div className="flex flex-col gap-1">
@@ -320,6 +322,7 @@ export function InventoryDetail() {
         visible={!!editingLine}
         onHide={() => setEditingLine(null)}
         style={{ width: '320px' }}
+        breakpoints={{ '575px': '95vw' }}
       >
         {editingLine && (
           <div className="flex flex-col gap-4 pt-2">

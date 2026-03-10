@@ -119,6 +119,7 @@ export function StockCorrectionDialog({ visible, onHide, warehouseId, preselecte
       visible={visible}
       onHide={handleHide}
       style={{ width: '480px' }}
+      breakpoints={{ '640px': '95vw', '575px': '100vw' }}
       modal
       draggable={false}
     >

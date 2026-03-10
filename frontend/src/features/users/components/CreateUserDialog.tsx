@@ -135,6 +135,7 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
         onHide={onHide}
         footer={footer}
         style={{ width: '480px' }}
+        breakpoints={{ '640px': '95vw', '575px': '100vw' }}
       >
         <div className="flex flex-col gap-4 mt-2">
           {/* Username */}
@@ -173,7 +174,7 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
           </div>
 
           {/* Name row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Nombre</label>
               <Controller

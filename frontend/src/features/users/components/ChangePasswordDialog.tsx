@@ -80,6 +80,7 @@ export function ChangePasswordDialog({ visible, onHide, targetUser, isSelf }: Pr
         onHide={onHide}
         footer={footer}
         style={{ width: '420px' }}
+        breakpoints={{ '640px': '95vw', '575px': '100vw' }}
       >
         <div className="flex flex-col gap-4 mt-2">
           {/* Current password — only required when changing own password */}

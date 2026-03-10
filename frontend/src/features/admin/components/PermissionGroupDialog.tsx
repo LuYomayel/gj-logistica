@@ -159,6 +159,7 @@ export function PermissionGroupDialog({ visible, onHide, group }: Props) {
         onHide={onHide}
         footer={footer}
         style={{ width: '650px' }}
+        breakpoints={{ '768px': '95vw', '575px': '100vw' }}
         maximizable
       >
         <div className="flex flex-col gap-4 mt-2">

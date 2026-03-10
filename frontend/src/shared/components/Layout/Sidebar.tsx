@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useSidebar } from './AppLayout';
 
 interface NavItem {
   label: string;
@@ -59,9 +60,16 @@ const navSections: NavSection[] = [
 
 export function Sidebar() {
   const { user, hasPermission, isSuperAdmin } = useAuth();
+  const { isOpen, close } = useSidebar();
 
   return (
-    <aside className="fixed top-[54px] left-0 bottom-0 w-[210px] bg-white border-r border-gray-200 overflow-y-auto z-40 flex flex-col shadow-sm">
+    <aside className={`
+      fixed top-[54px] left-0 bottom-0 w-[210px] bg-white border-r border-gray-200
+      overflow-y-auto z-40 flex flex-col shadow-sm
+      transition-transform duration-200 ease-in-out
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      lg:translate-x-0
+    `}>
       <nav className="flex flex-col flex-1 pt-2 pb-2">
         {navSections.map((section) => {
           // Super admin section: only for super_admin
@@ -92,6 +100,7 @@ export function Sidebar() {
                     key={item.to}
                     to={item.to}
                     end={item.end ?? false}
+                    onClick={close}
                     className={({ isActive }) =>
                       `flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm no-underline transition-all duration-150 ${
                         isActive

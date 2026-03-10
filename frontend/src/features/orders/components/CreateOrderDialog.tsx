@@ -163,6 +163,7 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
         visible={visible}
         onHide={onHide}
         style={{ width: "560px" }}
+        breakpoints={{ "768px": "95vw", "575px": "100vw" }}
         footer={footer}
         modal
         draggable={false}
@@ -217,7 +218,7 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
           </div>
 
           {/* Fechas */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">
                 Fecha pedido
@@ -276,7 +277,7 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
           </div>
 
           {/* Nro seguimiento + Agencia */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">
                 Nro. seguimiento

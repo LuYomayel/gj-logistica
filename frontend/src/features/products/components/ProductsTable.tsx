@@ -93,12 +93,12 @@ export function ProductsTable() {
       />
 
       {/* Title */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">Productos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Productos</h1>
           <p className="text-gray-500 text-sm">{total.toLocaleString('es-AR')} productos en total</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -147,7 +147,7 @@ export function ProductsTable() {
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col gap-1 min-w-[180px]">
+          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[180px]">
             <label className="text-xs font-medium text-gray-600">Buscar (ref, nombre)</label>
             <InputText
               value={searchInput}
@@ -157,7 +157,7 @@ export function ProductsTable() {
               className="text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1 min-w-[140px]">
+          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[140px]">
             <label className="text-xs font-medium text-gray-600">Rubro</label>
             <InputText
               value={rubInput}
@@ -167,7 +167,7 @@ export function ProductsTable() {
               className="text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1 min-w-[140px]">
+          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[140px]">
             <label className="text-xs font-medium text-gray-600">Marca</label>
             <InputText
               value={marcaInput}
@@ -195,11 +195,12 @@ export function ProductsTable() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <DataTable
           value={products}
           lazy
           paginator
+          scrollable
           rows={filters.limit ?? 20}
           totalRecords={total}
           first={((filters.page ?? 1) - 1) * (filters.limit ?? 20)}

@@ -15,8 +15,8 @@ interface InfoRowProps {
 
 function InfoRow({ label, value }: InfoRowProps) {
   return (
-    <div className="flex border-b border-gray-100 py-2">
-      <span className="w-[200px] shrink-0 text-sm font-medium text-gray-500">{label}</span>
+    <div className="flex flex-col sm:flex-row border-b border-gray-100 py-2">
+      <span className="sm:w-[200px] sm:shrink-0 text-sm font-medium text-gray-500">{label}</span>
       <span className="text-sm text-gray-800">{value ?? '-'}</span>
     </div>
   );
@@ -59,7 +59,7 @@ export function ProductDetail({ id }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Button
@@ -68,7 +68,7 @@ export function ProductDetail({ id }: Props) {
               onClick={() => navigate('/products')}
               className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2"
             />
-            <h1 className="text-xl font-bold text-[#1b3a5f]">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">
               {product.ref} — {product.label ?? 'Sin nombre'}
             </h1>
           </div>
@@ -83,7 +83,7 @@ export function ProductDetail({ id }: Props) {
           </div>
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2">
           {hasPermission('products.write') && (
             <Button label="Modificar" icon="pi pi-pencil" outlined className="px-4 py-2" />
           )}

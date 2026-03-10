@@ -17,8 +17,8 @@ import type { ProductStock, StockMovement } from '../../../shared/types';
 interface InfoRowProps { label: string; value: string | number | null | undefined }
 function InfoRow({ label, value }: InfoRowProps) {
   return (
-    <div className="flex border-b border-gray-100 py-2">
-      <span className="w-[180px] shrink-0 text-sm font-medium text-gray-500">{label}</span>
+    <div className="flex flex-col sm:flex-row border-b border-gray-100 py-2">
+      <span className="sm:w-[180px] sm:shrink-0 text-sm font-medium text-gray-500">{label}</span>
       <span className="text-sm text-gray-800">{value ?? '-'}</span>
     </div>
   );
@@ -102,7 +102,7 @@ export function WarehouseDetail({ id }: Props) {
 
       <div className="flex flex-col gap-4">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button
               icon="pi pi-arrow-left"
@@ -111,7 +111,7 @@ export function WarehouseDetail({ id }: Props) {
               className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2"
             />
             <div>
-              <h1 className="text-xl font-bold text-[#1b3a5f]">{warehouse.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">{warehouse.name}</h1>
               {warehouse.shortName && (
                 <p className="text-sm text-gray-500">{warehouse.shortName}</p>
               )}
@@ -122,14 +122,16 @@ export function WarehouseDetail({ id }: Props) {
             />
           </div>
           {hasPermission('stock.write_movements') && (
-            <Button
-              label="Corrección Stock"
-              icon="pi pi-sliders-h"
-              outlined
-              severity="secondary"
-              onClick={() => { setCorrectionProduct(undefined); setShowCorrection(true); }}
-              className="px-4 py-2"
-            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                label="Corrección Stock"
+                icon="pi pi-sliders-h"
+                outlined
+                severity="secondary"
+                onClick={() => { setCorrectionProduct(undefined); setShowCorrection(true); }}
+                className="px-4 py-2"
+              />
+            </div>
           )}
         </div>
 
@@ -159,7 +161,7 @@ export function WarehouseDetail({ id }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <TabView>
             {/* ── Tab 1: Stock por producto ── */}
             <TabPanel header={`Stock (${filteredStock.length})`} leftIcon="pi pi-box mr-2">
@@ -243,6 +245,7 @@ export function WarehouseDetail({ id }: Props) {
                     value={movements?.data ?? []}
                     size="small"
                     emptyMessage="Sin movimientos registrados"
+                    scrollable
                     rowClassName={(row: StockMovement) =>
                       !row.originType ? 'cursor-pointer hover:bg-blue-50 transition-colors' : ''
                     }

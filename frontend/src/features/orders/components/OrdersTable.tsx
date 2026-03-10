@@ -84,14 +84,14 @@ export function OrdersTable() {
 
     <div className="flex flex-col gap-4">
       {/* Title */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">Pedidos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Pedidos</h1>
           <p className="text-gray-500 text-sm">
             {total.toLocaleString("es-AR")} pedidos en total
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasPermission('orders.export') && (
             <Button
               label="Exportar CSV"
@@ -116,7 +116,7 @@ export function OrdersTable() {
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col gap-1 min-w-[160px]">
+          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[160px]">
             <label className="text-xs font-medium text-gray-600">Ref</label>
             <InputText
               value={refInput}
@@ -126,7 +126,7 @@ export function OrdersTable() {
               className="text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1 min-w-[160px]">
+          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[160px]">
             <label className="text-xs font-medium text-gray-600">Estado</label>
             <Dropdown
               value={statusInput}
@@ -154,11 +154,12 @@ export function OrdersTable() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <DataTable
           value={orders}
           lazy
           paginator
+          scrollable
           rows={filters.limit ?? 20}
           totalRecords={total}
           first={((filters.page ?? 1) - 1) * (filters.limit ?? 20)}

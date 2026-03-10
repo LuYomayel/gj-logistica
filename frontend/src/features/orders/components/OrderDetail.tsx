@@ -32,8 +32,8 @@ interface InfoRowProps {
 
 function InfoRow({ label, value }: InfoRowProps) {
   return (
-    <div className="flex border-b border-gray-100 py-2">
-      <span className="w-[180px] shrink-0 text-sm font-medium text-gray-500">{label}</span>
+    <div className="flex flex-col sm:flex-row border-b border-gray-100 py-2">
+      <span className="sm:w-[180px] sm:shrink-0 text-sm font-medium text-gray-500">{label}</span>
       <span className="text-sm text-gray-800">
         {value === true ? 'Sí' : value === false ? 'No' : (value ?? '-')}
       </span>
@@ -213,7 +213,7 @@ export function OrderDetail({ id }: Props) {
 
       <div className="flex flex-col gap-4">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Button
@@ -222,7 +222,7 @@ export function OrderDetail({ id }: Props) {
                 onClick={() => navigate('/orders')}
                 className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2"
               />
-              <h1 className="text-xl font-bold text-[#1b3a5f]">{order.ref}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">{order.ref}</h1>
               <StatusBadge status={order.status} />
             </div>
             <p className="text-sm text-gray-500 ml-8">
@@ -232,7 +232,7 @@ export function OrderDetail({ id }: Props) {
           </div>
 
           {/* Action buttons — gated by permission */}
-          <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex flex-wrap gap-2 justify-end">
             {status === 0 && hasPermission('orders.validate') && (
               <Button
                 label="Validar"
@@ -351,7 +351,7 @@ export function OrderDetail({ id }: Props) {
         </div>
 
         {/* Lines */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <div className="px-4 py-3 border-b border-gray-200">
             <h3 className="font-semibold text-[#1b3a5f]">
               Líneas del pedido ({lines.length})
@@ -362,6 +362,7 @@ export function OrderDetail({ id }: Props) {
             value={lines}
             size="small"
             emptyMessage="Sin líneas — agregá productos abajo"
+            scrollable
           >
             <Column
               field="position"
@@ -433,7 +434,7 @@ export function OrderDetail({ id }: Props) {
 
           {/* Totals row */}
           {lines.length > 0 && (
-            <div className="flex justify-end gap-6 px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm">
+            <div className="flex flex-wrap justify-end gap-3 sm:gap-6 px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm">
               <span className="text-gray-500">
                 Neto: <strong className="text-gray-800">{formatAmount(order.totalHT)}</strong>
               </span>

@@ -37,7 +37,7 @@ export function WarehousesTable() {
       <CreateWarehouseDialog visible={showCreate} onHide={() => setShowCreate(false)} />
 
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-[#1b3a5f]">Almacenes</h1>
             <p className="text-sm text-gray-500 mt-0.5">{warehouses.length} almacén{warehouses.length !== 1 ? 'es' : ''}</p>
@@ -52,10 +52,11 @@ export function WarehousesTable() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <DataTable
             value={warehouses}
             size="small"
+            scrollable
             emptyMessage="No hay almacenes registrados"
             onRowClick={(e) => navigate(`/warehouses/${(e.data as Warehouse).id}`)}
             rowClassName={() => 'cursor-pointer hover:bg-blue-50 transition-colors'}

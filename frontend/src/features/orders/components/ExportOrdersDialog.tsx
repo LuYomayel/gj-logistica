@@ -73,13 +73,14 @@ export function ExportOrdersDialog({ visible, onHide }: Props) {
       visible={visible}
       onHide={handleHide}
       style={{ width: '460px' }}
+      breakpoints={{ '640px': '95vw', '575px': '100vw' }}
       modal
       draggable={false}
     >
       <div className="flex flex-col gap-4 pt-2">
 
         {/* Rango de fechas */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Fecha desde</label>
             <Calendar

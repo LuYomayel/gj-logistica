@@ -33,21 +33,21 @@ export function ProductStatsView() {
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#1b3a5f]">Estadísticas de productos</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Estadísticas de productos</h1>
         <p className="text-gray-500 text-sm">Popularidad por pedidos y desglose por rubro</p>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 w-full sm:w-auto">
             <label className="text-xs font-medium text-gray-600">Año</label>
             <Dropdown
               value={filters.year}
               options={YEAR_OPTIONS}
               onChange={(e) => setFilters((f) => ({ ...f, year: e.value }))}
               placeholder="Todos"
-              className="text-sm min-w-[140px]"
+              className="text-sm w-full sm:min-w-[140px]"
             />
           </div>
           <Button
@@ -75,7 +75,7 @@ export function ProductStatsView() {
       {!isLoading && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           {/* Popular products — 2/3 width */}
-          <div className="xl:col-span-2 bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="xl:col-span-2 bg-white rounded-lg border border-gray-200 overflow-x-auto">
             <div className="px-4 py-3 border-b border-gray-100">
               <span className="font-semibold text-gray-700 text-sm">
                 Top productos por popularidad ({popular.length})
@@ -132,7 +132,7 @@ export function ProductStatsView() {
           </div>
 
           {/* By rubro — 1/3 width */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
             <div className="px-4 py-3 border-b border-gray-100">
               <span className="font-semibold text-gray-700 text-sm">
                 Por rubro ({byRubro.length})

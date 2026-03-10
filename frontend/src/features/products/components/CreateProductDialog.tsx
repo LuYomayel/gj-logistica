@@ -117,6 +117,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
       visible={visible}
       onHide={handleHide}
       style={{ width: '700px' }}
+      breakpoints={{ '960px': '90vw', '768px': '95vw', '575px': '100vw' }}
       modal
       draggable={false}
     >
@@ -125,7 +126,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
         {/* ── Sección: Datos básicos ── */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos básicos</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Ref */}
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">
@@ -171,7 +172,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
         {/* ── Sección: Código de barras y precio ── */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Precio y código</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Código de barras</label>
               <InputText {...register('barcode')} placeholder="EAN, UPC..." className="w-full" />
@@ -218,7 +219,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
         {/* ── Sección: Stock ── */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Stock</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Stock límite para alertas</label>
               <Controller
@@ -255,7 +256,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
         {/* ── Sección: Clasificación ── */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Clasificación</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Rubro</label>
               <InputText {...register('rubro')} placeholder="Rubro..." className="w-full" />

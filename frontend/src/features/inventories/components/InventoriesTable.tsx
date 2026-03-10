@@ -52,9 +52,9 @@ export function InventoriesTable() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">Inventarios</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Inventarios</h1>
           <p className="text-gray-500 text-sm">{total.toLocaleString('es-AR')} inventarios en total</p>
         </div>
         {hasPermission('stock.write_inventories') && (
@@ -68,11 +68,12 @@ export function InventoriesTable() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <DataTable
           value={inventories}
           lazy
           paginator
+          scrollable
           rows={20}
           totalRecords={total}
           first={(page - 1) * 20}

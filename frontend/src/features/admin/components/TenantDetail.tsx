@@ -57,13 +57,15 @@ export function TenantDetail() {
       <Toast ref={toast} />
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button icon="pi pi-arrow-left" text onClick={() => navigate('/admin/tenants')} />
-        <div>
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">{tenant.name}</h1>
-          <div className="flex items-center gap-2 mt-0.5">
-            <code className="bg-gray-100 px-1 rounded text-xs">{tenant.code}</code>
-            <Tag value={tenant.isActive ? 'Activo' : 'Inactivo'} severity={tenant.isActive ? 'success' : 'danger'} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button icon="pi pi-arrow-left" text onClick={() => navigate('/admin/tenants')} />
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">{tenant.name}</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <code className="bg-gray-100 px-1 rounded text-xs">{tenant.code}</code>
+              <Tag value={tenant.isActive ? 'Activo' : 'Inactivo'} severity={tenant.isActive ? 'success' : 'danger'} />
+            </div>
           </div>
         </div>
       </div>
@@ -82,7 +84,7 @@ export function TenantDetail() {
           {loadingUsers ? (
             <Skeleton height="200px" />
           ) : (
-            <DataTable value={users} size="small" emptyMessage="No hay usuarios en este tenant">
+            <DataTable value={users} size="small" emptyMessage="No hay usuarios en este tenant" scrollable>
               <Column field="id" header="ID" style={{ width: '60px' }} />
               <Column field="username" header="Usuario" />
               <Column field="firstName" header="Nombre" body={(r: User) => `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || '-'} />
@@ -112,7 +114,7 @@ export function TenantDetail() {
           {loadingGroups ? (
             <Skeleton height="200px" />
           ) : (
-            <DataTable value={groups} size="small" emptyMessage="No hay grupos para este tenant">
+            <DataTable value={groups} size="small" emptyMessage="No hay grupos para este tenant" scrollable>
               <Column field="id" header="ID" style={{ width: '60px' }} />
               <Column field="name" header="Nombre" />
               <Column field="description" header="Descripción" body={(r: PermissionGroup) => r.description ?? '-'} />

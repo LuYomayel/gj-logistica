@@ -87,9 +87,9 @@ export function UsersTable() {
         isSelf={pwdTarget?.id === authUser?.id}
       />
       {/* Title + actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">Usuarios y Grupos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Usuarios y Grupos</h1>
           <p className="text-gray-500 text-sm">{total} usuarios en total</p>
         </div>
         {hasPermission('users.write') && (
@@ -98,11 +98,12 @@ export function UsersTable() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <DataTable
           value={users}
           lazy
           paginator
+          scrollable
           rows={limit}
           totalRecords={total}
           first={(page - 1) * limit}

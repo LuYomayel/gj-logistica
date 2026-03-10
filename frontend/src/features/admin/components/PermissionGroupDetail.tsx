@@ -88,13 +88,17 @@ export function PermissionGroupDetail() {
       <ConfirmDialog />
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button icon="pi pi-arrow-left" text onClick={() => navigate('/admin/permission-groups')} />
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[#1b3a5f]">{group.name}</h1>
-          {group.description && <p className="text-gray-500 text-sm">{group.description}</p>}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button icon="pi pi-arrow-left" text onClick={() => navigate('/admin/permission-groups')} />
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">{group.name}</h1>
+            {group.description && <p className="text-gray-500 text-sm">{group.description}</p>}
+          </div>
         </div>
-        <Button label="Editar Grupo" icon="pi pi-pencil" outlined onClick={() => setEditDialogVisible(true)} />
+        <div className="flex flex-wrap gap-2">
+          <Button label="Editar Grupo" icon="pi pi-pencil" outlined onClick={() => setEditDialogVisible(true)} />
+        </div>
       </div>
 
       <TabView>

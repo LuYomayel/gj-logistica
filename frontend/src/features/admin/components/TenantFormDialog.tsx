@@ -65,6 +65,7 @@ export function TenantFormDialog({ visible, onHide, tenant }: Props) {
         onHide={onHide}
         footer={footer}
         style={{ width: '420px' }}
+        breakpoints={{ '640px': '95vw', '575px': '100vw' }}
       >
         <div className="flex flex-col gap-4 mt-2">
           <div className="flex flex-col gap-1">

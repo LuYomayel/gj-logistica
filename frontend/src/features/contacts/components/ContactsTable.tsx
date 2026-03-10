@@ -42,14 +42,14 @@ export function ContactsTable() {
     <div className="flex flex-col gap-4">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-bold text-[#1b3a5f]">Contactos</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Contactos</h1>
         <p className="text-gray-500 text-sm">{total.toLocaleString('es-AR')} contactos en total</p>
       </div>
 
       {/* Search */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex flex-col gap-1 min-w-[220px]">
+          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[220px]">
             <label className="text-xs font-medium text-gray-600">Buscar</label>
             <InputText
               value={searchInput}
@@ -77,11 +77,12 @@ export function ContactsTable() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <DataTable
           value={contacts}
           lazy
           paginator
+          scrollable
           rows={limit}
           totalRecords={total}
           first={(page - 1) * limit}
