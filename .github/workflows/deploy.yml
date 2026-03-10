@@ -140,53 +140,54 @@ jobs:
 
       # ── ACTIVAR EN EL SERVIDOR ──────────────────────────────────────────────
       # Pasos:
-      #   1. npm ci       → instala deps (incluyendo devDeps para ts-node/migrations)
-      #   2. migration:run → aplica migraciones pendientes (idempotente)
-      #   3. pm2 reload   → reinicio sin downtime (fallback a start si es primera vez)
-      #   4. pm2 save     → persiste la lista de procesos para reboot del servidor
-      #   5. nginx        → copia config, valida sintaxis, recarga
+      #   1. npm ci       → instala deps
+      #   2. pm2 reload   → reinicio sin downtime (fallback a start si es primera vez)
+      #   3. pm2 save     → persiste la lista de procesos para reboot del servidor
+      #   4. nginx        → copia config, valida sintaxis, recarga
+      # Nota: migraciones se corren manualmente con `npm run migration:run`
       - name: Aplicar migraciones + reiniciar servicios
         run: |
           ssh -i ~/.ssh/deploy_key \
               -p ${{ secrets.DEPLOY_PORT }} \
               -o StrictHostKeyChecking=no \
-              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'bash -l -c "
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_SCRIPT'
             set -e
 
-            echo \"=========================================\"
-            echo \"  GJ Logística — Deploy iniciado\"
-            echo \"=========================================\"
+            # Cargar PATH para Node/npm/pm2 (nvm o NodeSource)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            export PATH="/usr/local/bin:/usr/bin:$PATH"
 
-            echo \"\"
-            echo \"→ [1/5] Instalando dependencias del backend...\"
+            echo '========================================='
+            echo '  GJ Logística — Deploy iniciado'
+            echo '========================================='
+
+            echo ''
+            echo '→ [1/4] Instalando dependencias del backend...'
             cd ${{ secrets.DEPLOY_PATH }}/backend
             npm ci
 
-            echo \"\"
-            echo \"→ [2/5] Aplicando migraciones de base de datos...\"
-            npm run migration:run
-
-            echo \"\"
-            echo \"→ [3/5] Reiniciando backend con PM2...\"
+            echo ''
+            echo '→ [2/4] Reiniciando backend con PM2...'
             cd ${{ secrets.DEPLOY_PATH }}
             pm2 reload ecosystem.config.js --only gj-backend 2>/dev/null || \
             pm2 start  ecosystem.config.js --only gj-backend
 
-            echo \"\"
-            echo \"→ [4/5] Guardando lista de procesos PM2...\"
+            echo ''
+            echo '→ [3/4] Guardando lista de procesos PM2...'
             pm2 save
 
-            echo \"\"
-            echo \"→ [5/5] Actualizando configuración de Nginx...\"
+            echo ''
+            echo '→ [4/4] Actualizando configuración de Nginx...'
             sudo cp ${{ secrets.DEPLOY_PATH }}/nginx.conf /etc/nginx/sites-available/gj-logistica
             sudo ln -sf /etc/nginx/sites-available/gj-logistica \
                          /etc/nginx/sites-enabled/gj-logistica
             sudo nginx -t
             sudo systemctl reload nginx
 
-            echo \"\"
-            echo \"=========================================\"
-            echo \"  Deploy completado con éxito!\"
-            echo \"  URL: http://104.131.48.172\"
-            echo \"=========================================\"
-          "'
+            echo ''
+            echo '========================================='
+            echo '  Deploy completado con éxito!'
+            echo '  URL: http://104.131.48.172'
+            echo '========================================='
+          DEPLOY_SCRIPT
