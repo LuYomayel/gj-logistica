@@ -16,6 +16,54 @@ import { usersApi } from '../../users/api/usersApi';
 import { PermissionGroupDialog } from './PermissionGroupDialog';
 import type { Permission, User } from '../../../shared/types';
 
+const MODULE_LABELS: Record<string, string> = {
+  users: 'Usuarios',
+  third_parties: 'Terceros',
+  contacts: 'Contactos',
+  orders: 'Pedidos',
+  products: 'Productos',
+  stock: 'Stock / Almacenes',
+  barcodes: 'Códigos de Barras',
+  import: 'Importación',
+  export: 'Exportación',
+  tenants: 'Organizaciones',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  read: 'Ver',
+  write: 'Crear / Modificar',
+  delete: 'Eliminar',
+  export: 'Exportar',
+  validate: 'Validar',
+  send: 'Enviar',
+  close: 'Cerrar',
+  cancel: 'Anular',
+  generate_docs: 'Generar documentos',
+  read_permissions: 'Ver permisos',
+  write_external: 'Crear externos',
+  write_password: 'Cambiar contraseña',
+  read_own_perms: 'Ver propios permisos',
+  write_own_info: 'Modificar perfil',
+  write_own_password: 'Cambiar propia contraseña',
+  write_own_perms: 'Modificar propios permisos',
+  read_groups: 'Ver grupos',
+  read_group_perms: 'Ver permisos de grupos',
+  write_groups: 'Crear / Modificar grupos',
+  delete_groups: 'Eliminar grupos',
+  write_payment: 'Gestionar pagos',
+  expand_access: 'Acceso ampliado',
+  read_prices: 'Ver precios',
+  ignore_min_price: 'Ignorar precio mínimo',
+  write_warehouses: 'Crear almacenes',
+  delete_warehouses: 'Eliminar almacenes',
+  read_movements: 'Ver movimientos',
+  write_movements: 'Crear movimientos',
+  read_inventories: 'Ver inventarios',
+  write_inventories: 'Crear inventarios',
+  generate: 'Generar',
+  run: 'Ejecutar',
+};
+
 export function PermissionGroupDetail() {
   const { id } = useParams<{ id: string }>();
   const groupId = Number(id);
@@ -107,8 +155,8 @@ export function PermissionGroupDetail() {
             <Skeleton height="200px" />
           ) : (
             <DataTable value={permissions} size="small" emptyMessage="No hay permisos asignados">
-              <Column field="module" header="Módulo" style={{ width: '150px' }} />
-              <Column field="action" header="Acción" style={{ width: '180px' }} />
+              <Column field="module" header="Módulo" style={{ width: '150px' }} body={(r: Permission) => MODULE_LABELS[r.module] ?? r.module} />
+              <Column field="action" header="Acción" style={{ width: '180px' }} body={(r: Permission) => ACTION_LABELS[r.action] ?? r.action} />
               <Column field="label" header="Descripción" />
               <Column
                 field="isAdvanced"

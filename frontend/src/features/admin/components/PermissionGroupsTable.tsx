@@ -74,7 +74,7 @@ export function PermissionGroupsTable() {
           <Column field="id" header="ID" style={{ width: '60px' }} />
           <Column field="name" header="Nombre" />
           <Column field="description" header="Descripción" body={(r: PermissionGroup) => r.description ?? '-'} />
-          <Column field="tenantId" header="Tenant ID" style={{ width: '100px' }} body={(r: PermissionGroup) => r.tenantId ?? <span className="text-gray-400 text-xs">Global</span>} />
+          <Column field="tenantId" header="Organización" style={{ width: '100px' }} body={(r: PermissionGroup) => r.tenantId ?? <span className="text-gray-400 text-xs">Global</span>} />
           <Column
             field="isActive"
             header="Estado"

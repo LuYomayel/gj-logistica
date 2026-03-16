@@ -13,6 +13,62 @@ import { Skeleton } from 'primereact/skeleton';
 import { permissionsApi } from '../api/permissionsApi';
 import type { User, PermissionGroup } from '../../../shared/types';
 
+/** Map from permission code to human-readable Spanish label */
+const PERMISSION_LABELS: Record<string, string> = {
+  'users.read': 'Ver usuarios',
+  'users.read_permissions': 'Ver permisos de otros usuarios',
+  'users.write': 'Crear y modificar usuarios',
+  'users.write_external': 'Crear usuarios externos',
+  'users.write_password': 'Cambiar contraseña de otros',
+  'users.delete': 'Eliminar o desactivar usuarios',
+  'users.read_own_perms': 'Ver mis propios permisos',
+  'users.write_own_info': 'Modificar mi perfil',
+  'users.write_own_password': 'Cambiar mi contraseña',
+  'users.write_own_perms': 'Modificar mis propios permisos',
+  'users.read_groups': 'Ver grupos',
+  'users.read_group_perms': 'Ver permisos de grupos',
+  'users.write_groups': 'Crear y modificar grupos',
+  'users.delete_groups': 'Eliminar grupos',
+  'users.export': 'Exportar usuarios',
+  'third_parties.read': 'Ver terceros',
+  'third_parties.write': 'Crear y modificar terceros',
+  'third_parties.delete': 'Eliminar terceros',
+  'third_parties.export': 'Exportar terceros',
+  'third_parties.write_payment': 'Gestionar pagos de terceros',
+  'third_parties.expand_access': 'Acceder a todos los terceros',
+  'contacts.read': 'Ver contactos',
+  'contacts.write': 'Crear y modificar contactos',
+  'contacts.delete': 'Eliminar contactos',
+  'contacts.export': 'Exportar contactos',
+  'orders.read': 'Ver pedidos',
+  'orders.write': 'Crear y modificar pedidos',
+  'orders.validate': 'Validar pedidos',
+  'orders.generate_docs': 'Generar documentos de pedidos',
+  'orders.send': 'Enviar pedidos',
+  'orders.close': 'Cerrar pedidos',
+  'orders.cancel': 'Anular pedidos',
+  'orders.delete': 'Eliminar pedidos',
+  'orders.export': 'Exportar pedidos',
+  'products.read': 'Ver productos',
+  'products.write': 'Crear y modificar productos',
+  'products.read_prices': 'Ver precios de productos',
+  'products.delete': 'Eliminar productos',
+  'products.export': 'Exportar productos',
+  'products.ignore_min_price': 'Ignorar precio mínimo',
+  'stock.read': 'Ver stock',
+  'stock.write_warehouses': 'Crear y modificar almacenes',
+  'stock.delete_warehouses': 'Eliminar almacenes',
+  'stock.read_movements': 'Ver movimientos de stock',
+  'stock.write_movements': 'Crear movimientos de stock',
+  'stock.read_inventories': 'Ver inventarios',
+  'stock.write_inventories': 'Crear y modificar inventarios',
+  'barcodes.generate': 'Generar códigos de barras',
+  'barcodes.write': 'Crear códigos de barras',
+  'barcodes.delete': 'Eliminar códigos de barras',
+  'import.run': 'Importar datos masivos',
+  'export.run': 'Exportar datos',
+};
+
 interface Props {
   user: User | null;
   onHide: () => void;
@@ -90,7 +146,7 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
     user?.userType === 'super_admin'
       ? 'Super Administrador'
       : user?.userType === 'client_admin'
-        ? 'Administrador de Tenant'
+        ? 'Administrador de Organización'
         : '';
 
   return (
@@ -173,7 +229,7 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {(effectiveData?.effective ?? []).map((perm) => (
-                    <Tag key={perm} value={perm} severity="info" className="text-xs" />
+                    <Tag key={perm} value={PERMISSION_LABELS[perm] ?? perm} severity="info" className="text-xs" />
                   ))}
                   {(effectiveData?.effective.length ?? 0) === 0 && (
                     <div className="text-gray-400 text-sm">Sin permisos asignados</div>

@@ -22,8 +22,8 @@ import WarehousesPage from './pages/WarehousesPage';
 import WarehouseDetailPage from './pages/WarehouseDetailPage';
 import ThirdPartiesPage from './pages/ThirdPartiesPage';
 import ThirdPartyDetailPage from './pages/ThirdPartyDetailPage';
-import TenantsPage from './pages/admin/TenantsPage';
-import TenantDetailPage from './pages/admin/TenantDetailPage';
+import OrganizacionesPage from './pages/admin/TenantsPage';
+import OrganizacionDetailPage from './pages/admin/TenantDetailPage';
 import PermissionGroupsPage from './pages/admin/PermissionGroupsPage';
 import PermissionGroupDetailPage from './pages/admin/PermissionGroupDetailPage';
 
@@ -94,8 +94,8 @@ export default function App() {
 
           {/* Admin routes — super_admin only */}
           <Route element={<AdminRoute />}>
-            <Route path="/admin/tenants" element={<TenantsPage />} />
-            <Route path="/admin/tenants/:id" element={<TenantDetailPage />} />
+            <Route path="/admin/organizaciones" element={<OrganizacionesPage />} />
+            <Route path="/admin/organizaciones/:id" element={<OrganizacionDetailPage />} />
             <Route path="/admin/permission-groups" element={<PermissionGroupsPage />} />
             <Route path="/admin/permission-groups/:id" element={<PermissionGroupDetailPage />} />
           </Route>

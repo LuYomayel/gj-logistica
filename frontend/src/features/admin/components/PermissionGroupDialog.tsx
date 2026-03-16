@@ -33,7 +33,7 @@ const MODULE_LABELS: Record<string, string> = {
   barcodes: 'Códigos de Barras',
   import: 'Importación',
   export: 'Exportación',
-  tenants: 'Tenants (Admin)',
+  tenants: 'Organizaciones (Admin)',
 };
 
 export function PermissionGroupDialog({ visible, onHide, group }: Props) {

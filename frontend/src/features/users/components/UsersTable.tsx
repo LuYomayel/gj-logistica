@@ -193,7 +193,7 @@ export function UsersTable() {
           />
           <Column
             field="entity"
-            header="Tenant"
+            header="Organización"
             style={{ width: '80px', textAlign: 'center' }}
             bodyStyle={{ textAlign: 'center' }}
             body={(row: User) => <span className="text-xs text-gray-500">#{row.entity}</span>}
