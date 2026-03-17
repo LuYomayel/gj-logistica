@@ -9,6 +9,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Skeleton } from 'primereact/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { permissionsApi } from '../api/permissionsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { PermissionGroupDialog } from './PermissionGroupDialog';
 import type { PermissionGroup } from '../../../shared/types';
 
@@ -30,8 +31,8 @@ export function PermissionGroupsTable() {
       void qc.invalidateQueries({ queryKey: ['permission-groups'] });
       toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Grupo eliminado', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo eliminar el grupo'), life: 4000 });
     },
   });
 
@@ -74,7 +75,7 @@ export function PermissionGroupsTable() {
           <Column field="id" header="ID" style={{ width: '60px' }} />
           <Column field="name" header="Nombre" />
           <Column field="description" header="Descripción" body={(r: PermissionGroup) => r.description ?? '-'} />
-          <Column field="tenantId" header="Tenant ID" style={{ width: '100px' }} body={(r: PermissionGroup) => r.tenantId ?? <span className="text-gray-400 text-xs">Global</span>} />
+          <Column field="tenantId" header="Organización" style={{ width: '100px' }} body={(r: PermissionGroup) => r.tenantId ?? <span className="text-gray-400 text-xs">Global</span>} />
           <Column
             field="isActive"
             header="Estado"

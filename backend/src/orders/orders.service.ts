@@ -187,9 +187,11 @@ export class OrdersService {
 
       const lines = await lineRepo.find({ where: { orderId: id } });
 
-      // ── 1. Check stock for all product lines ──────────────────────────────
+      // ── 1+2. Atomic check+decrement stock per line (single loop) ────────
       for (const line of lines) {
         if (!line.productId) continue;
+
+        // Lock, check and decrement in one pass — no race condition
         const ps = await stockRepo.findOne({
           where: { warehouseId, productId: line.productId },
           lock: { mode: 'pessimistic_write' },
@@ -200,13 +202,8 @@ export class OrdersService {
             `Stock insuficiente para producto #${line.productId}: disponible ${available}, requerido ${line.quantity}`,
           );
         }
-      }
 
-      // ── 2. Decrement stock + create movements ─────────────────────────────
-      for (const line of lines) {
-        if (!line.productId) continue;
-
-        const ps = await stockRepo.findOne({ where: { warehouseId, productId: line.productId } });
+        // Decrement immediately while holding the lock
         if (ps) {
           ps.quantity -= line.quantity;
           await stockRepo.save(ps);
@@ -294,7 +291,7 @@ export class OrdersService {
           }
 
           // Update mirror (increment back)
-          await prodRepo.decrement({ id: line.productId }, 'stock', -line.quantity);
+          await prodRepo.increment({ id: line.productId }, 'stock', line.quantity);
 
           const movement = movRepo.create({
             warehouseId,
@@ -542,17 +539,15 @@ export class OrdersService {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const yearMonth = `${yy}${mm}`;
 
+    // Atomic sequence: LAST_INSERT_ID() is connection-local, no race condition
     await qr.manager.query(
-      'INSERT INTO order_sequences (yearMonth, currentSeq) VALUES (?, 1) ' +
-      'ON DUPLICATE KEY UPDATE currentSeq = currentSeq + 1',
+      'INSERT INTO order_sequences (yearMonth, currentSeq) VALUES (?, LAST_INSERT_ID(1)) ' +
+      'ON DUPLICATE KEY UPDATE currentSeq = LAST_INSERT_ID(currentSeq + 1)',
       [yearMonth],
     );
 
-    const [row] = await qr.manager.query(
-      'SELECT currentSeq FROM order_sequences WHERE yearMonth = ?',
-      [yearMonth],
-    );
+    const [row] = await qr.manager.query('SELECT LAST_INSERT_ID() AS seq');
 
-    return `SO${yearMonth}-${String(row.currentSeq).padStart(4, '0')}`;
+    return `SO${yearMonth}-${String(row.seq).padStart(4, '0')}`;
   }
 }

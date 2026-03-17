@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, type CreateUserDto } from '../api/usersApi';
 import { tenantsApi } from '../../admin/api/tenantsApi';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { UserType } from '../../../shared/types';
 
 interface Props {
@@ -34,7 +35,7 @@ interface FormData {
 }
 
 const USER_TYPE_OPTIONS_SUPER: { label: string; value: UserType }[] = [
-  { label: 'Admin de tenant', value: 'client_admin' },
+  { label: 'Administrador', value: 'client_admin' },
   { label: 'Usuario estándar', value: 'client_user' },
   { label: 'Super administrador', value: 'super_admin' },
 ];
@@ -127,9 +128,8 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
       onCreated?.();
       onHide();
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      const msg = err?.response?.data?.message ?? 'No se pudo crear el usuario';
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: msg, life: 5000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo crear el usuario'), life: 5000 });
     },
   });
 
@@ -283,14 +283,14 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
 
           {/* Tenant — fixed or selectable (client_admin always sees their own tenant) */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Tenant *</label>
+            <label className="text-sm font-medium text-gray-700">Organización *</label>
             {isFixedTenant ? (
-              <InputText value={`Tenant #${effectiveTenantId}`} disabled className="w-full bg-gray-50" />
+              <InputText value={`Organización #${effectiveTenantId}`} disabled className="w-full bg-gray-50" />
             ) : (
               <Controller
                 name="entity"
                 control={control}
-                rules={{ required: 'Seleccione un tenant' }}
+                rules={{ required: 'Seleccione una organización' }}
                 render={({ field }) => (
                   <Dropdown
                     value={field.value}
@@ -299,7 +299,7 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
                     optionLabel="label"
                     optionValue="value"
                     className={`w-full ${errors.entity ? 'p-invalid' : ''}`}
-                    placeholder="Seleccionar tenant"
+                    placeholder="Seleccionar organización"
                     filter
                   />
                 )}

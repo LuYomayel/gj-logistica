@@ -9,6 +9,7 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { usersApi } from '../api/usersApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { User } from '../../../shared/types';
 import { UserPermissionsPanel } from '../../admin/components/UserPermissionsPanel';
@@ -36,8 +37,8 @@ export function UsersTable() {
       void qc.invalidateQueries({ queryKey: ['users'] });
       toast.current?.show({ severity: 'success', summary: 'Usuario desactivado', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo desactivar el usuario'), life: 4000 });
     },
   });
 
@@ -47,8 +48,8 @@ export function UsersTable() {
       void qc.invalidateQueries({ queryKey: ['users'] });
       toast.current?.show({ severity: 'success', summary: 'Usuario activado', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo activar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo activar el usuario'), life: 4000 });
     },
   });
 
@@ -193,7 +194,7 @@ export function UsersTable() {
           />
           <Column
             field="entity"
-            header="Tenant"
+            header="Organización"
             style={{ width: '80px', textAlign: 'center' }}
             bodyStyle={{ textAlign: 'center' }}
             body={(row: User) => <span className="text-xs text-gray-500">#{row.entity}</span>}

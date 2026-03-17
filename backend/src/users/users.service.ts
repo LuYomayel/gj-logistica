@@ -59,8 +59,23 @@ export class UsersService {
     return this.userRepo.save(user);
   }
 
-  async update(id: number, dto: UpdateUserDto): Promise<User> {
+  async update(
+    id: number,
+    dto: UpdateUserDto,
+    requester?: { id: number; userType: string },
+  ): Promise<User> {
     const user = await this.findOne(id);
+
+    // Prevent privilege escalation: only super_admin can change these fields
+    if (!requester || requester.userType !== 'super_admin') {
+      if (dto.userType === 'super_admin') {
+        throw new ForbiddenException('Solo un super_admin puede asignar el rol super_admin');
+      }
+      delete dto.userType;
+      delete dto.isAdmin;
+      delete dto.entity;
+    }
+
     const updates: Partial<User> = { ...dto };
 
     if (dto.password) {

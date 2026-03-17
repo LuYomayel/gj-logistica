@@ -36,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_SECRET', 'default-secret'),
+      secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
@@ -44,7 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.userRepo.findOne({
       where: { id: payload.sub, status: 1 },
     });
-    if (!user) throw new UnauthorizedException();
+    if (!user) throw new UnauthorizedException('Token inválido o usuario deshabilitado');
 
     const tenantId: number | null =
       user.userType === 'super_admin' ? null : user.entity;

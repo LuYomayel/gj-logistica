@@ -1,6 +1,26 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthUser } from '../types';
+
+/** Decode JWT payload without external libraries */
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/** Check if a JWT token is expired */
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return true; // No exp claim = treat as expired for safety
+  // exp is in seconds, Date.now() in milliseconds
+  return Date.now() >= payload.exp * 1000;
+}
 
 interface AuthCtx {
   user: AuthUser | null;
@@ -19,8 +39,20 @@ interface AuthCtx {
 const AuthContext = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('gj_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    const stored = localStorage.getItem('gj_token');
+    // Auto-clear expired token on mount
+    if (stored && isTokenExpired(stored)) {
+      localStorage.removeItem('gj_token');
+      localStorage.removeItem('gj_user');
+      return null;
+    }
+    return stored;
+  });
   const [user, setUser] = useState<AuthUser | null>(() => {
+    const storedToken = localStorage.getItem('gj_token');
+    // Don't load user if token is expired
+    if (!storedToken || isTokenExpired(storedToken)) return null;
     const stored = localStorage.getItem('gj_user');
     return stored ? (JSON.parse(stored) as AuthUser) : null;
   });
@@ -56,10 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isClientAdmin = user?.userType === 'client_admin';
   const isClientUser = user?.userType === 'client_user';
 
+  // Check token validity (not just presence) for isAuthenticated
+  const isAuthenticated = useMemo(() => {
+    if (!token) return false;
+    if (isTokenExpired(token)) {
+      // Auto-logout on expired token detection
+      logout();
+      return false;
+    }
+    return true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   return (
     <AuthContext.Provider value={{
       user, token, login, logout,
-      isAuthenticated: !!token,
+      isAuthenticated,
       hasPermission,
       isSuperAdmin, isClientAdmin, isClientUser,
     }}>

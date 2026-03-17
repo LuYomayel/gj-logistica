@@ -9,6 +9,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Skeleton } from 'primereact/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { tenantsApi } from '../api/tenantsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { TenantFormDialog } from './TenantFormDialog';
 import type { Tenant } from '../../../shared/types';
 
@@ -28,10 +29,10 @@ export function TenantsTable() {
     mutationFn: (id: number) => tenantsApi.deactivate(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['tenants'] });
-      toast.current?.show({ severity: 'success', summary: 'Desactivado', detail: 'Tenant desactivado', life: 3000 });
+      toast.current?.show({ severity: 'success', summary: 'Desactivado', detail: 'Organización desactivada', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo desactivar la organización'), life: 4000 });
     },
   });
 
@@ -39,10 +40,10 @@ export function TenantsTable() {
     mutationFn: (id: number) => tenantsApi.activate(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['tenants'] });
-      toast.current?.show({ severity: 'success', summary: 'Activado', detail: 'Tenant reactivado', life: 3000 });
+      toast.current?.show({ severity: 'success', summary: 'Activado', detail: 'Organización reactivada', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo activar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo activar la organización'), life: 4000 });
     },
   });
 
@@ -50,7 +51,7 @@ export function TenantsTable() {
   const handleEdit = (t: Tenant) => { setEditingTenant(t); setDialogVisible(true); };
   const handleDeactivate = (t: Tenant) => {
     confirmDialog({
-      message: `¿Desactivar el tenant "${t.name}"? Sus usuarios no podrán operar.`,
+      message: `¿Desactivar la organización "${t.name}"? Sus usuarios no podrán operar.`,
       header: 'Confirmar desactivación',
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
@@ -61,7 +62,7 @@ export function TenantsTable() {
   };
   const handleActivate = (t: Tenant) => {
     confirmDialog({
-      message: `¿Reactivar el tenant "${t.name}"?`,
+      message: `¿Reactivar la organización "${t.name}"?`,
       header: 'Confirmar reactivación',
       icon: 'pi pi-check-circle',
       acceptLabel: 'Reactivar',
@@ -81,10 +82,10 @@ export function TenantsTable() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Tenants</h1>
-          <p className="text-gray-500 text-sm">{tenants.length} tenants registrados</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Organizaciones</h1>
+          <p className="text-gray-500 text-sm">{tenants.length} organizaciones registradas</p>
         </div>
-        <Button label="Nuevo Tenant" icon="pi pi-plus" onClick={handleCreate} />
+        <Button label="Nueva Organización" icon="pi pi-plus" onClick={handleCreate} />
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
@@ -92,8 +93,8 @@ export function TenantsTable() {
           value={tenants}
           size="small"
           scrollable
-          emptyMessage="No hay tenants"
-          onRowClick={(e) => navigate(`/admin/tenants/${(e.data as Tenant).id}`)}
+          emptyMessage="No hay organizaciones"
+          onRowClick={(e) => navigate(`/admin/organizaciones/${(e.data as Tenant).id}`)}
           rowClassName={() => 'cursor-pointer hover:bg-gray-50'}
         >
           <Column field="id" header="ID" style={{ width: '60px' }} />

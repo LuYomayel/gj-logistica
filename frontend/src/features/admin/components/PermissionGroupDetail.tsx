@@ -13,8 +13,57 @@ import { Skeleton } from 'primereact/skeleton';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { permissionsApi } from '../api/permissionsApi';
 import { usersApi } from '../../users/api/usersApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { PermissionGroupDialog } from './PermissionGroupDialog';
 import type { Permission, User } from '../../../shared/types';
+
+const MODULE_LABELS: Record<string, string> = {
+  users: 'Usuarios',
+  third_parties: 'Terceros',
+  contacts: 'Contactos',
+  orders: 'Pedidos',
+  products: 'Productos',
+  stock: 'Stock / Almacenes',
+  barcodes: 'Códigos de Barras',
+  import: 'Importación',
+  export: 'Exportación',
+  tenants: 'Organizaciones',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  read: 'Ver',
+  write: 'Crear / Modificar',
+  delete: 'Eliminar',
+  export: 'Exportar',
+  validate: 'Validar',
+  send: 'Enviar',
+  close: 'Cerrar',
+  cancel: 'Anular',
+  generate_docs: 'Generar documentos',
+  read_permissions: 'Ver permisos',
+  write_external: 'Crear externos',
+  write_password: 'Cambiar contraseña',
+  read_own_perms: 'Ver propios permisos',
+  write_own_info: 'Modificar perfil',
+  write_own_password: 'Cambiar propia contraseña',
+  write_own_perms: 'Modificar propios permisos',
+  read_groups: 'Ver grupos',
+  read_group_perms: 'Ver permisos de grupos',
+  write_groups: 'Crear / Modificar grupos',
+  delete_groups: 'Eliminar grupos',
+  write_payment: 'Gestionar pagos',
+  expand_access: 'Acceso ampliado',
+  read_prices: 'Ver precios',
+  ignore_min_price: 'Ignorar precio mínimo',
+  write_warehouses: 'Crear almacenes',
+  delete_warehouses: 'Eliminar almacenes',
+  read_movements: 'Ver movimientos',
+  write_movements: 'Crear movimientos',
+  read_inventories: 'Ver inventarios',
+  write_inventories: 'Crear inventarios',
+  generate: 'Generar',
+  run: 'Ejecutar',
+};
 
 export function PermissionGroupDetail() {
   const { id } = useParams<{ id: string }>();
@@ -55,7 +104,7 @@ export function PermissionGroupDetail() {
       setAddMemberDialogVisible(false);
       setSelectedUserId(null);
     },
-    onError: () => toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo agregar', life: 4000 }),
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo agregar al grupo'), life: 4000 }),
   });
 
   const removeMemberMutation = useMutation({
@@ -64,7 +113,7 @@ export function PermissionGroupDetail() {
       void qc.invalidateQueries({ queryKey: ['group-members', groupId] });
       toast.current?.show({ severity: 'success', summary: 'Quitado', detail: 'Miembro quitado del grupo', life: 3000 });
     },
-    onError: () => toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo quitar', life: 4000 }),
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo quitar del grupo'), life: 4000 }),
   });
 
   const handleRemoveMember = (user: User) => {
@@ -107,8 +156,8 @@ export function PermissionGroupDetail() {
             <Skeleton height="200px" />
           ) : (
             <DataTable value={permissions} size="small" emptyMessage="No hay permisos asignados">
-              <Column field="module" header="Módulo" style={{ width: '150px' }} />
-              <Column field="action" header="Acción" style={{ width: '180px' }} />
+              <Column field="module" header="Módulo" style={{ width: '150px' }} body={(r: Permission) => MODULE_LABELS[r.module] ?? r.module} />
+              <Column field="action" header="Acción" style={{ width: '180px' }} body={(r: Permission) => ACTION_LABELS[r.action] ?? r.action} />
               <Column field="label" header="Descripción" />
               <Column
                 field="isAdvanced"

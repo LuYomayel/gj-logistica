@@ -23,6 +23,7 @@ export class ThirdPartiesController {
   }
 
   @Get(':id')
+  @RequiresPermission('third_parties.read')
   @ApiOperation({ summary: 'Detalle empresa' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -49,6 +50,7 @@ export class ThirdPartiesController {
   }
 
   @Get(':id/sales-reps')
+  @RequiresPermission('third_parties.read')
   @ApiOperation({ summary: 'Vendedores asignados a la empresa' })
   getSalesReps(@Param('id', ParseIntPipe) id: number) {
     return this.service.getSalesReps(id);

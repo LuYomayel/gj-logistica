@@ -46,11 +46,17 @@ dolibarr/
 - Order ref format: `SOyymm-nnnn` — use `order_sequences` table with row lock, not MAX()+1 query
 - Email notifications (ORDER_VALIDATE, ORDER_CLOSE) are sent AFTER transaction commit, non-blocking
 
-### Testing
+### Testing — TDD (Test-Driven Development)
+- **Methodology: Red → Green → Refactor**
+  1. **Red:** Write the test FIRST — define what the code should do (test fails because code doesn't exist yet)
+  2. **Green:** Write the MINIMUM code to make the test pass
+  3. **Refactor:** Clean up the code while keeping tests green
 - **MANDATORY:** Every module must have Jest unit tests in `*.spec.ts` files
+- **MANDATORY:** When implementing new features or fixing bugs, ALWAYS write the test first
 - Test services with mocked repositories (`jest.fn()`)
 - Tests must pass before moving to the next roadmap phase
 - Run with `npm run test` from `backend/`
+- When fixing a bug: write a test that reproduces the bug FIRST (Red), then fix the code (Green)
 
 ### Code Style
 - Use `async/await` — never callbacks or `.then()` chains
@@ -115,9 +121,48 @@ dolibarr/
 
 ## ROADMAP PHASES (current progress tracked here)
 - [x] **Phase 1** — Backend Core: Auth, Users, Groups, Third Parties, Contacts + Tests ✅ 33/33 tests
-- [ ] **Phase 2** — Products, Warehouses, Stock, Orders (validation logic) + Tests
-- [ ] **Phase 3** — ETL: migrate data from Dolibarr MySQL
-- [ ] **Phase 4** — Frontend React: all screens
-- [ ] **Phase 5** — e2e tests, Swagger, Docker, Deploy
+- [x] **Phase 2** — Products, Warehouses, Stock, Orders (validation logic) + Tests ✅ 65 tests
+- [x] **Phase 3** — ETL: migrate data from Dolibarr MySQL ✅ 15 migrators
+- [x] **Phase 4** — Frontend React: all screens ✅
+- [x] **Phase 5** — E2E tests ✅ 161 Playwright tests (157 pass, 4 skip)
+- [x] **Phase 5b** — UX: nav restructure, Tenants→Organizaciones, permission labels en español ✅
+- [x] **Phase 6** — Security hardening: 7 critical bug fixes with TDD ✅ 138 unit tests total (29 new)
 
 **Gate rule:** Do NOT start the next phase until all Jest tests for the current phase pass.
+
+---
+
+## NEXT: Feature Backlog (prioritized by ROI)
+
+### 🔴 HIGH VALUE
+- [ ] **R4** — Stock replenishment page + dashboard KPI (1-2 days, uses existing endpoints)
+- [ ] **R1** — Order status history + shipping timeline (3-4 days, new entity)
+- [ ] **R2** — Fix notifications: multi-recipient from notification_settings (2-3 days)
+- [ ] **R3** — Bulk order import from Excel (4-5 days)
+- [ ] **R5** — Per-product image upload/display (2-3 days)
+
+### 🟡 MEDIUM VALUE
+- [ ] **Y6** — Fix Product Notes tab placeholder (2h)
+- [ ] **Y2** — Order contacts panel in UI (1 day, entity exists)
+- [ ] **Y3** — Product price history tab (1 day, entity exists)
+- [ ] **Y4** — Rich dashboard KPI cards (1-2 days)
+- [ ] **Y5** — Stock at date CSV export (4h)
+- [ ] **Y7** — Notification log viewer (1 day)
+- [ ] **Y8** — User self-service profile page (1 day)
+- [ ] **Y9** — Improved product import UX with preview (1 day)
+- [ ] **Y10** — Barcode/QR label printing (2-3 days)
+
+### 🟢 NICE TO HAVE
+- [ ] **G1** — Keyboard shortcuts on orders (2h)
+- [ ] **G2** — Inline order line quantity edit (1 day)
+- [ ] **G3** — Saved filter presets (1 day)
+- [ ] **G4** — Dark mode (2 days)
+- [ ] **G5** — Bulk inventory line fill from warehouse stock (4h)
+- [ ] **G6** — Swagger link in sidebar for super_admin (30min)
+
+### 🐛 Remaining important bugs
+- [ ] **B8** — cancelOrder: use increment instead of negative decrement ✅ (fixed in Phase 6)
+- [ ] **B9** — inventories resetToDraft doesn't revert stock movements
+- [ ] **B10** — Dashboard fetches 100 products to filter 10 (should use /products/low-stock)
+- [ ] **B12** — XSS in notification email HTML (escape interpolated values)
+- [ ] **B13** — PrivateRoute doesn't validate JWT expiration

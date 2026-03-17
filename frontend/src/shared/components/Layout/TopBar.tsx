@@ -1,25 +1,60 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { useAuth } from '../../hooks/useAuth';
 import { useSidebar } from './AppLayout';
 
-interface TopNavItem {
+interface TopNavSection {
   label: string;
+  icon: string;
+  /** Base path — clicking navigates here */
   to: string;
+  /** Route prefixes that make this section "active" */
+  matchPrefixes: string[];
   permission?: string;
+  superAdminOnly?: boolean;
 }
 
-const TOP_NAV: TopNavItem[] = [
-  { label: 'Inicio', to: '/' },
-  { label: 'Terceros', to: '/contacts', permission: 'contacts.read' },
-  { label: 'Productos', to: '/products', permission: 'products.read' },
-  { label: 'Pedidos', to: '/orders', permission: 'orders.read' },
-  { label: 'Usuarios', to: '/users', permission: 'users.read' },
+const SECTIONS: TopNavSection[] = [
+  {
+    label: 'Inicio',
+    icon: 'pi pi-home',
+    to: '/',
+    matchPrefixes: ['/'],
+  },
+  {
+    label: 'Comercial',
+    icon: 'pi pi-briefcase',
+    to: '/orders',
+    matchPrefixes: ['/orders', '/third-parties', '/contacts'],
+    permission: 'orders.read',
+  },
+  {
+    label: 'Almacén',
+    icon: 'pi pi-warehouse',
+    to: '/warehouses',
+    matchPrefixes: ['/warehouses', '/products', '/inventories', '/stock'],
+    permission: 'stock.read',
+  },
+  {
+    label: 'Administración',
+    icon: 'pi pi-cog',
+    to: '/users',
+    matchPrefixes: ['/users'],
+    permission: 'users.read',
+  },
+  {
+    label: 'Super Admin',
+    icon: 'pi pi-shield',
+    to: '/admin/organizaciones',
+    matchPrefixes: ['/admin'],
+    superAdminOnly: true,
+  },
 ];
 
 export function TopBar() {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toggle } = useSidebar();
 
   const handleLogout = () => {
@@ -27,8 +62,20 @@ export function TopBar() {
     navigate('/login');
   };
 
+  const isActive = (section: TopNavSection) => {
+    if (section.to === '/' && location.pathname === '/') return true;
+    if (section.to === '/') return false;
+    return section.matchPrefixes.some((p) => location.pathname.startsWith(p));
+  };
+
+  const visibleSections = SECTIONS.filter((s) => {
+    if (s.superAdminOnly && !isSuperAdmin) return false;
+    if (s.permission && !hasPermission(s.permission)) return false;
+    return true;
+  });
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center gap-2 lg:gap-6 px-3 lg:px-4 h-[54px] bg-[#1b3a5f] text-white shadow-md">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center gap-2 lg:gap-4 px-3 lg:px-4 h-[54px] bg-[#1b3a5f] text-white shadow-md">
       {/* Hamburger — mobile only */}
       <button
         onClick={toggle}
@@ -50,19 +97,25 @@ export function TopBar() {
       {/* Separator — desktop only */}
       <div className="w-px h-6 bg-white/20 shrink-0 hidden lg:block" />
 
-      {/* Top nav — desktop only, filtered by permission */}
+      {/* Top nav — desktop only, section-level navigation */}
       <nav className="hidden lg:flex items-center gap-0.5 text-sm">
-        {TOP_NAV.filter((item) =>
-          !item.permission ? true : hasPermission(item.permission),
-        ).map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            className="px-3 py-1.5 rounded text-white/80 hover:bg-white/10 hover:text-white no-underline transition-colors"
-          >
-            {item.label}
-          </Link>
-        ))}
+        {visibleSections.map((section) => {
+          const active = isActive(section);
+          return (
+            <Link
+              key={section.to}
+              to={section.to}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded no-underline transition-colors ${
+                active
+                  ? 'bg-white/20 text-white font-semibold'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+              } ${section.superAdminOnly ? 'text-orange-300 hover:text-orange-200' : ''}`}
+            >
+              <i className={`${section.icon} text-xs`} />
+              <span>{section.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Right: user info + logout */}

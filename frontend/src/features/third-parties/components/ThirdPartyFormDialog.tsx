@@ -5,8 +5,8 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { thirdPartiesApi, type CreateThirdPartyPayload } from '../api/thirdPartiesApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { ThirdParty } from '../../../shared/types';
 
 interface Props {
@@ -40,15 +40,6 @@ const emptyValues: FormValues = {
   city: '',
   website: '',
   notes: '',
-};
-
-const apiErrMsg = (err: unknown, fallback: string): string => {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg.join(', ');
-  }
-  return fallback;
 };
 
 export function ThirdPartyFormDialog({ visible, onHide, onSaved, thirdParty }: Props) {

@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantsApi, type CreateTenantDto } from '../api/tenantsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { Tenant } from '../../../shared/types';
 
 interface Props {
@@ -41,11 +42,11 @@ export function TenantFormDialog({ visible, onHide, tenant }: Props) {
         : tenantsApi.create(data as CreateTenantDto),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['tenants'] });
-      toast.current?.show({ severity: 'success', summary: 'Guardado', detail: isEdit ? 'Tenant actualizado' : 'Tenant creado', life: 3000 });
+      toast.current?.show({ severity: 'success', summary: 'Guardado', detail: isEdit ? 'Organización actualizada' : 'Organización creada', life: 3000 });
       onHide();
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo guardar el tenant', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo guardar la organización'), life: 4000 });
     },
   });
 
@@ -60,7 +61,7 @@ export function TenantFormDialog({ visible, onHide, tenant }: Props) {
     <>
       <Toast ref={toast} />
       <Dialog
-        header={isEdit ? 'Editar Tenant' : 'Nuevo Tenant'}
+        header={isEdit ? 'Editar Organización' : 'Nueva Organización'}
         visible={visible}
         onHide={onHide}
         footer={footer}

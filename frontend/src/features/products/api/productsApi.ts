@@ -58,6 +58,10 @@ export const productsApi = {
   remove: async (id: number): Promise<void> => {
     await apiClient.delete(`/products/${id}`);
   },
+  getLowStock: async (): Promise<Product[]> => {
+    const { data } = await apiClient.get<Product[]>('/products/low-stock');
+    return data;
+  },
   getStats: async (filters: ProductStatsFilters = {}): Promise<ProductStats> => {
     const { data } = await apiClient.get('/products/stats', { params: filters });
     // Backend returns the object directly (not paginated)

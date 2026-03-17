@@ -7,9 +7,9 @@ import type { AutoCompleteCompleteEvent } from 'primereact/autocomplete';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { stockApi } from '../../stock/api/stockApi';
 import { productsApi } from '../../products/api/productsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { Product } from '../../../shared/types';
 
 interface Props {
@@ -25,15 +25,6 @@ interface FormValues {
   label: string;
   inventoryCode: string;
 }
-
-const apiErrMsg = (err: unknown, fallback: string): string => {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg.join(', ');
-  }
-  return fallback;
-};
 
 export function StockCorrectionDialog({ visible, onHide, warehouseId, preselectedProduct }: Props) {
   const queryClient = useQueryClient();
