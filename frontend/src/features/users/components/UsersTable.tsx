@@ -7,19 +7,26 @@ import { Skeleton } from 'primereact/skeleton';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
+import { Dropdown } from 'primereact/dropdown';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { usersApi } from '../api/usersApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { useAuth } from '../../../shared/hooks/useAuth';
-import type { User } from '../../../shared/types';
+import type { User, UserType } from '../../../shared/types';
 import { UserPermissionsPanel } from '../../admin/components/UserPermissionsPanel';
 import { CreateUserDialog } from './CreateUserDialog';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 
+const USER_TYPE_OPTIONS: { label: string; value: UserType }[] = [
+  { label: 'Super Admin', value: 'super_admin' },
+  { label: 'Admin', value: 'client_admin' },
+  { label: 'Usuario', value: 'client_user' },
+];
+
 export function UsersTable() {
   const toast = useRef<Toast>(null);
   const qc = useQueryClient();
-  const { hasPermission, user: authUser } = useAuth();
+  const { hasPermission, isSuperAdmin, user: authUser } = useAuth();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const [permUser, setPermUser] = useState<User | null>(null);
@@ -50,6 +57,18 @@ export function UsersTable() {
     },
     onError: (err) => {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo activar el usuario'), life: 4000 });
+    },
+  });
+
+  const changeTypeMutation = useMutation({
+    mutationFn: ({ id, userType }: { id: number; userType: UserType }) =>
+      usersApi.update(id, { userType }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+      toast.current?.show({ severity: 'success', summary: 'Tipo actualizado', life: 3000 });
+    },
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo cambiar el tipo de usuario'), life: 4000 });
     },
   });
 
@@ -147,19 +166,6 @@ export function UsersTable() {
             body={(row: User) => row.phone ?? '-'}
           />
           <Column
-            field="isAdmin"
-            header="Admin"
-            style={{ width: '80px', textAlign: 'center' }}
-            bodyStyle={{ textAlign: 'center' }}
-            body={(row: User) =>
-              row.isAdmin ? (
-                <Tag value="Admin" severity="warning" />
-              ) : (
-                <span className="text-gray-400 text-xs">—</span>
-              )
-            }
-          />
-          <Column
             field="status"
             header="Estado"
             style={{ width: '100px', textAlign: 'center' }}
@@ -181,7 +187,7 @@ export function UsersTable() {
           <Column
             field="userType"
             header="Tipo"
-            style={{ width: '110px' }}
+            style={{ width: '160px' }}
             body={(row: User) => {
               const map: Record<string, { label: string; severity: 'warning' | 'info' | 'secondary' }> = {
                 super_admin: { label: 'Super Admin', severity: 'warning' },
@@ -189,6 +195,20 @@ export function UsersTable() {
                 client_user: { label: 'Usuario', severity: 'secondary' },
               };
               const conf = map[row.userType] ?? { label: row.userType, severity: 'secondary' as const };
+
+              // Super admin can change user types inline (except their own)
+              if (isSuperAdmin && row.id !== authUser?.id) {
+                return (
+                  <Dropdown
+                    value={row.userType}
+                    options={USER_TYPE_OPTIONS}
+                    onChange={(e) => changeTypeMutation.mutate({ id: row.id, userType: e.value as UserType })}
+                    className="p-inputtext-sm w-full"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                );
+              }
+
               return <Tag value={conf.label} severity={conf.severity} />;
             }}
           />
