@@ -42,6 +42,7 @@ Thumbs.db
 
 # NestJS
 backend/dist/
+backend/.env.e2e
 
 # Vite
 frontend/dist/
@@ -52,3 +53,5 @@ coverage/
 
 # PM2
 ecosystem.config.js.log
+
+*.md
