@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppLayout } from './shared/components/Layout/AppLayout';
 import { PrivateRoute } from './shared/components/PrivateRoute';
 import { AdminRoute } from './shared/components/AdminRoute';
+import { AccessDenied } from './shared/components/AccessDenied';
 import { useAuth } from './shared/hooks/useAuth';
 
 import LoginPage from './pages/LoginPage';
@@ -27,10 +28,10 @@ import OrganizacionDetailPage from './pages/admin/TenantDetailPage';
 import PermissionGroupsPage from './pages/admin/PermissionGroupsPage';
 import PermissionGroupDetailPage from './pages/admin/PermissionGroupDetailPage';
 
-/** Protects routes by permission — redirects to dashboard if user lacks it */
+/** Protects routes by permission — shows "Access Denied" page if user lacks it */
 function PermissionRoute({ permission }: { permission: string }) {
   const { hasPermission } = useAuth();
-  if (!hasPermission(permission)) return <Navigate to="/" replace />;
+  if (!hasPermission(permission)) return <AccessDenied />;
   return <Outlet />;
 }
 

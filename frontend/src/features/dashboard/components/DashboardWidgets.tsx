@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { productsApi } from '../../products/api/productsApi';
 import { ordersApi } from '../../orders/api/ordersApi';
 import { StatusBadge } from '../../../shared/components/StatusBadge';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Product, Order } from '../../../shared/types';
 
 function StockAlertWidget() {
@@ -139,6 +140,11 @@ function RecentOrdersWidget() {
 }
 
 export function DashboardWidgets() {
+  const { hasPermission } = useAuth();
+
+  const canSeeStock = hasPermission('products.read') || hasPermission('stock.read');
+  const canSeeOrders = hasPermission('orders.read');
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -146,10 +152,18 @@ export function DashboardWidgets() {
         <p className="text-gray-500 text-sm">Resumen general del sistema</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <StockAlertWidget />
-        <RecentOrdersWidget />
-      </div>
+      {(canSeeStock || canSeeOrders) ? (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {canSeeStock && <StockAlertWidget />}
+          {canSeeOrders && <RecentOrdersWidget />}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
+          <i className="pi pi-chart-bar text-5xl" />
+          <p className="text-sm">No tenés permisos para ver widgets del tablero.</p>
+          <p className="text-xs">Contactá a un administrador para obtener acceso.</p>
+        </div>
+      )}
     </div>
   );
 }

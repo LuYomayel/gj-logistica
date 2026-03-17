@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog } from 'primereact/dialog';
 import { DataTable } from 'primereact/datatable';
@@ -10,9 +10,10 @@ import { Dropdown } from 'primereact/dropdown';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Skeleton } from 'primereact/skeleton';
+import { Checkbox } from 'primereact/checkbox';
 import { permissionsApi } from '../api/permissionsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
-import type { User, PermissionGroup } from '../../../shared/types';
+import type { User, Permission, PermissionGroup } from '../../../shared/types';
 
 /** Map from permission code to human-readable Spanish label */
 const PERMISSION_LABELS: Record<string, string> = {
@@ -70,6 +71,19 @@ const PERMISSION_LABELS: Record<string, string> = {
   'export.run': 'Exportar datos',
 };
 
+/** Module display order and Spanish labels */
+const MODULE_LABELS: Record<string, string> = {
+  orders: 'Pedidos',
+  products: 'Productos',
+  stock: 'Stock y Almacenes',
+  third_parties: 'Terceros',
+  contacts: 'Contactos',
+  users: 'Usuarios',
+  barcodes: 'Códigos de barras',
+  import: 'Importación',
+  export: 'Exportación',
+};
+
 interface Props {
   user: User | null;
   onHide: () => void;
@@ -79,10 +93,25 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
   const toast = useRef<Toast>(null);
   const qc = useQueryClient();
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Helper to invalidate all permission-related queries for this user
+  const invalidateUserPerms = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['user-permissions', user?.id] }),
+      qc.invalidateQueries({ queryKey: ['user-group-memberships', user?.id] }),
+    ]);
+  }, [qc, user?.id]);
 
   const { data: effectiveData, isLoading: loadingEffective } = useQuery({
     queryKey: ['user-permissions', user?.id],
     queryFn: () => permissionsApi.getUserEffectivePermissions(user!.id),
+    enabled: !!user,
+  });
+
+  const { data: catalog, isLoading: loadingCatalog } = useQuery({
+    queryKey: ['permissions-catalog'],
+    queryFn: permissionsApi.getCatalog,
     enabled: !!user,
   });
 
@@ -108,9 +137,8 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
 
   const addToGroupMutation = useMutation({
     mutationFn: (groupId: number) => permissionsApi.addMemberToGroup(groupId, user!.id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['user-group-memberships', user?.id] });
-      void qc.invalidateQueries({ queryKey: ['user-permissions', user?.id] });
+    onSuccess: async () => {
+      await invalidateUserPerms();
       toast.current?.show({ severity: 'success', summary: 'Agregado', detail: 'Usuario agregado al grupo', life: 3000 });
       setSelectedGroupId(null);
     },
@@ -119,13 +147,60 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
 
   const removeFromGroupMutation = useMutation({
     mutationFn: (groupId: number) => permissionsApi.removeMemberFromGroup(groupId, user!.id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['user-group-memberships', user?.id] });
-      void qc.invalidateQueries({ queryKey: ['user-permissions', user?.id] });
+    onSuccess: async () => {
+      await invalidateUserPerms();
       toast.current?.show({ severity: 'success', summary: 'Quitado', detail: 'Usuario quitado del grupo', life: 3000 });
     },
     onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo quitar del grupo'), life: 4000 }),
   });
+
+  const setPermMutation = useMutation({
+    mutationFn: (vars: { permissionId: number; granted: boolean }) =>
+      permissionsApi.setUserPermission(user!.id, vars),
+    onSuccess: async () => {
+      await invalidateUserPerms();
+    },
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo actualizar el permiso'), life: 4000 }),
+  });
+
+  const removePermMutation = useMutation({
+    mutationFn: (permissionId: number) => permissionsApi.removeUserPermission(user!.id, permissionId),
+    onSuccess: async () => {
+      await invalidateUserPerms();
+    },
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo eliminar el override'), life: 4000 }),
+  });
+
+  /** Grant or remove all permissions in a module at once */
+  const handleBulkToggleModule = useCallback(async (permissions: Permission[], grant: boolean) => {
+    if (!user) return;
+    setBulkLoading(true);
+    try {
+      for (const perm of permissions) {
+        if (grant) {
+          await permissionsApi.setUserPermission(user.id, { permissionId: perm.id, granted: true });
+        } else {
+          // Remove the override — if it was granted individually, this clears it
+          try {
+            await permissionsApi.removeUserPermission(user.id, perm.id);
+          } catch {
+            // If there's no override to remove, ignore the error
+          }
+        }
+      }
+      await invalidateUserPerms();
+      toast.current?.show({
+        severity: 'success',
+        summary: grant ? 'Sección otorgada' : 'Sección quitada',
+        detail: `Se actualizaron ${permissions.length} permisos`,
+        life: 3000,
+      });
+    } catch (err) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'Error al actualizar permisos en lote'), life: 4000 });
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [user, invalidateUserPerms]);
 
   const handleRemoveFromGroup = (group: PermissionGroup) => {
     confirmDialog({
@@ -138,6 +213,23 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
   };
 
   const availableGroups = allGroups.filter((g) => !members.some((m) => m.id === g.id));
+
+  // Build override map: permissionId → granted boolean
+  const overrideMap = useMemo(() => {
+    const map = new Map<number, boolean>();
+    for (const o of effectiveData?.overrides ?? []) {
+      map.set(o.permissionId, o.granted);
+    }
+    return map;
+  }, [effectiveData?.overrides]);
+
+  // Build effective set for quick lookup
+  const effectiveSet = useMemo(
+    () => new Set(effectiveData?.effective ?? []),
+    [effectiveData?.effective],
+  );
+
+  const isAnyMutating = setPermMutation.isPending || removePermMutation.isPending || bulkLoading;
 
   // super_admin and client_admin have full access ('*') — permission groups don't apply
   const isFullAccessRole =
@@ -158,7 +250,7 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
         header={user ? `Permisos de ${user.username}` : 'Permisos'}
         visible={!!user}
         onHide={onHide}
-        style={{ width: '700px' }}
+        style={{ width: '750px' }}
         maximizable
       >
         {!user ? null : (
@@ -166,19 +258,7 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
             {/* Groups tab */}
             <TabPanel header={isFullAccessRole ? 'Grupos (N/A)' : `Grupos (${members.length})`}>
               {isFullAccessRole ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start">
-                  <i className="pi pi-info-circle text-blue-600 mt-0.5 text-lg" />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-800 mb-1">
-                      Acceso completo — rol: {roleLabel}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      Este usuario tiene acceso total al sistema. Los grupos de permisos aplican
-                      únicamente a <strong>usuarios estándar</strong> (client_user). No es posible
-                      ni necesario asignarle grupos de permisos.
-                    </p>
-                  </div>
-                </div>
+                <FullAccessNotice roleLabel={roleLabel} />
               ) : (
                 <>
                   <div className="flex gap-2 mb-3">
@@ -213,6 +293,40 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
               )}
             </TabPanel>
 
+            {/* Individual permissions tab */}
+            <TabPanel header={isFullAccessRole ? 'Permisos Individuales (N/A)' : 'Permisos Individuales'}>
+              {isFullAccessRole ? (
+                <FullAccessNotice roleLabel={roleLabel} />
+              ) : loadingCatalog ? (
+                <Skeleton height="300px" />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700 flex gap-2 items-start">
+                    <i className="pi pi-info-circle text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="mb-1">Asigná permisos directamente al usuario, sin necesidad de crear un grupo.</p>
+                      <p className="text-xs text-blue-600">Usá el checkbox de la sección para otorgar o quitar todos los permisos del módulo de una vez.</p>
+                    </div>
+                  </div>
+
+                  {Object.entries(catalog ?? {}).map(([module, permissions]) => (
+                    <PermissionModuleSection
+                      key={module}
+                      module={module}
+                      permissions={permissions}
+                      overrideMap={overrideMap}
+                      effectiveSet={effectiveSet}
+                      onGrant={(perm) => setPermMutation.mutate({ permissionId: perm.id, granted: true })}
+                      onDeny={(perm) => setPermMutation.mutate({ permissionId: perm.id, granted: false })}
+                      onRemoveOverride={(perm) => removePermMutation.mutate(perm.id)}
+                      onBulkToggle={(perms, grant) => void handleBulkToggleModule(perms, grant)}
+                      isLoading={isAnyMutating}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabPanel>
+
             {/* Effective permissions tab */}
             <TabPanel header={isFullAccessRole ? 'Permisos Efectivos (acceso total)' : `Permisos Efectivos (${effectiveData?.effective.length ?? 0})`}>
               {isFullAccessRole ? (
@@ -242,5 +356,139 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
         )}
       </Dialog>
     </>
+  );
+}
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function FullAccessNotice({ roleLabel }: { roleLabel: string }) {
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start">
+      <i className="pi pi-info-circle text-blue-600 mt-0.5 text-lg" />
+      <div>
+        <p className="text-sm font-semibold text-blue-800 mb-1">
+          Acceso completo — rol: {roleLabel}
+        </p>
+        <p className="text-sm text-blue-700">
+          Este usuario tiene acceso total al sistema. Los permisos individuales y grupos aplican
+          únicamente a <strong>usuarios estándar</strong> (client_user).
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface PermissionModuleSectionProps {
+  module: string;
+  permissions: Permission[];
+  overrideMap: Map<number, boolean>;
+  effectiveSet: Set<string>;
+  onGrant: (perm: Permission) => void;
+  onDeny: (perm: Permission) => void;
+  onRemoveOverride: (perm: Permission) => void;
+  onBulkToggle: (permissions: Permission[], grant: boolean) => void;
+  isLoading: boolean;
+}
+
+function PermissionModuleSection({
+  module,
+  permissions,
+  overrideMap,
+  effectiveSet,
+  onGrant,
+  onDeny,
+  onRemoveOverride,
+  onBulkToggle,
+  isLoading,
+}: PermissionModuleSectionProps) {
+  const moduleLabel = MODULE_LABELS[module] ?? module;
+
+  // Calculate module-level checkbox state
+  const allEffective = permissions.every((p) => effectiveSet.has(`${p.module}.${p.action}`));
+  const someEffective = permissions.some((p) => effectiveSet.has(`${p.module}.${p.action}`));
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex items-center gap-3">
+        <Checkbox
+          checked={allEffective}
+          disabled={isLoading}
+          onChange={() => onBulkToggle(permissions, !allEffective)}
+          tooltip={allEffective ? 'Quitar todos los permisos de esta sección' : 'Otorgar todos los permisos de esta sección'}
+          tooltipOptions={{ position: 'right' }}
+          className={someEffective && !allEffective ? 'p-checkbox-partial' : ''}
+        />
+        <span className="font-semibold text-sm text-[#1b3a5f]">{moduleLabel}</span>
+        <span className="text-xs text-gray-400 ml-auto">
+          {permissions.filter((p) => effectiveSet.has(`${p.module}.${p.action}`)).length}/{permissions.length}
+        </span>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {permissions.map((perm) => {
+          const key = `${perm.module}.${perm.action}`;
+          const hasOverride = overrideMap.has(perm.id);
+          const overrideGranted = overrideMap.get(perm.id);
+          const isEffective = effectiveSet.has(key);
+
+          return (
+            <div key={perm.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-sm">
+              {/* Checkbox */}
+              <Checkbox
+                checked={isEffective}
+                disabled={isLoading}
+                onChange={() => {
+                  if (hasOverride && overrideGranted) {
+                    onRemoveOverride(perm);
+                  } else if (isEffective) {
+                    onDeny(perm);
+                  } else {
+                    onGrant(perm);
+                  }
+                }}
+              />
+
+              {/* Permission label */}
+              <div className="flex-1 min-w-0">
+                <span className={isEffective ? 'text-gray-800' : 'text-gray-400'}>
+                  {PERMISSION_LABELS[key] ?? perm.label ?? key}
+                </span>
+              </div>
+
+              {/* Status */}
+              <div className="w-24 text-center shrink-0">
+                {hasOverride ? (
+                  <Tag
+                    value={overrideGranted ? 'Individual' : 'Denegado'}
+                    severity={overrideGranted ? 'success' : 'danger'}
+                    className="text-xs"
+                  />
+                ) : isEffective ? (
+                  <Tag value="Por grupo" severity="info" className="text-xs" />
+                ) : (
+                  <span className="text-xs text-gray-300">—</span>
+                )}
+              </div>
+
+              {/* Undo override button */}
+              <div className="w-8 shrink-0">
+                {hasOverride && (
+                  <Button
+                    icon="pi pi-undo"
+                    text
+                    size="small"
+                    severity="secondary"
+                    tooltip="Quitar override (usar valor del grupo)"
+                    tooltipOptions={{ position: 'left' }}
+                    disabled={isLoading}
+                    onClick={() => onRemoveOverride(perm)}
+                    className="!p-1"
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
