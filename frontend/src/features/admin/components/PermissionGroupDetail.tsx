@@ -13,6 +13,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { permissionsApi } from '../api/permissionsApi';
 import { usersApi } from '../../users/api/usersApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { PermissionGroupDialog } from './PermissionGroupDialog';
 import type { Permission, User } from '../../../shared/types';
 
@@ -103,7 +104,7 @@ export function PermissionGroupDetail() {
       setAddMemberDialogVisible(false);
       setSelectedUserId(null);
     },
-    onError: () => toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo agregar', life: 4000 }),
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo agregar al grupo'), life: 4000 }),
   });
 
   const removeMemberMutation = useMutation({
@@ -112,7 +113,7 @@ export function PermissionGroupDetail() {
       void qc.invalidateQueries({ queryKey: ['group-members', groupId] });
       toast.current?.show({ severity: 'success', summary: 'Quitado', detail: 'Miembro quitado del grupo', life: 3000 });
     },
-    onError: () => toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo quitar', life: 4000 }),
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo quitar del grupo'), life: 4000 }),
   });
 
   const handleRemoveMember = (user: User) => {

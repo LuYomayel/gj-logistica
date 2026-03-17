@@ -8,6 +8,7 @@ import { Message } from 'primereact/message';
 import { useState } from 'react';
 import { authApi } from '../api/authApi';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 
 interface LoginFormData {
   username: string;
@@ -31,8 +32,8 @@ export function LoginForm() {
       const res = await authApi.login(data.username, data.password);
       login(res.access_token, res.user);
       navigate('/', { replace: true });
-    } catch {
-      setError('Usuario o contraseña incorrectos');
+    } catch (err) {
+      setError(apiErrMsg(err, 'Usuario o contraseña incorrectos'));
     }
   };
 

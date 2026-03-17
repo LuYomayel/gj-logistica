@@ -9,6 +9,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Skeleton } from 'primereact/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { permissionsApi } from '../api/permissionsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { PermissionGroupDialog } from './PermissionGroupDialog';
 import type { PermissionGroup } from '../../../shared/types';
 
@@ -30,8 +31,8 @@ export function PermissionGroupsTable() {
       void qc.invalidateQueries({ queryKey: ['permission-groups'] });
       toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Grupo eliminado', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo eliminar el grupo'), life: 4000 });
     },
   });
 

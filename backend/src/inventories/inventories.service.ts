@@ -235,14 +235,85 @@ export class InventoriesService {
     }
   }
 
-  async resetToDraft(inventoryId: number): Promise<Inventory> {
-    const inventory = await this.inventoryRepo.findOne({ where: { id: inventoryId } });
-    if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
-    if (inventory.status !== 1) {
-      throw new BadRequestException('Solo se pueden resetear inventarios validados');
+  /**
+   * Resets a validated inventory back to draft.
+   * MUST revert all stock changes made during validate():
+   * - Reverse ProductStock quantities
+   * - Reverse Product.stock mirror
+   * - Create reverse StockMovement entries (negative of original delta)
+   * All inside a transaction.
+   */
+  async resetToDraft(inventoryId: number, userId?: number): Promise<Inventory> {
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+
+    try {
+      const invRepo = qr.manager.getRepository(Inventory);
+      const lineRepo = qr.manager.getRepository(InventoryLine);
+      const stockRepo = qr.manager.getRepository(ProductStock);
+      const movRepo = qr.manager.getRepository(StockMovement);
+      const productRepo = qr.manager.getRepository(Product);
+
+      const inventory = await invRepo.findOne({ where: { id: inventoryId } });
+      if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+      if (inventory.status !== 1) {
+        throw new BadRequestException('Solo se pueden resetear inventarios validados');
+      }
+
+      // Find the stock movements created during validate() for this inventory
+      const movements = await movRepo.find({
+        where: { originType: 'inventory', originId: inventoryId },
+      });
+
+      // Reverse each movement
+      for (const mov of movements) {
+        if (mov.productId === null || mov.warehouseId === null) continue;
+
+        const reverseDelta = -(mov.quantity ?? 0);
+        if (reverseDelta === 0) continue;
+
+        // Revert ProductStock
+        const ps = await stockRepo.findOne({
+          where: { warehouseId: mov.warehouseId, productId: mov.productId },
+        });
+        if (ps) {
+          ps.quantity = (ps.quantity ?? 0) + reverseDelta;
+          await stockRepo.save(ps);
+        }
+
+        // Revert Product.stock mirror
+        await productRepo.increment({ id: mov.productId }, 'stock', reverseDelta);
+
+        // Create reverse StockMovement
+        await movRepo.save(
+          movRepo.create({
+            warehouseId: mov.warehouseId,
+            productId: mov.productId,
+            quantity: reverseDelta,
+            movementType: 3,
+            originType: 'inventory',
+            originId: inventoryId,
+            inventoryCode: inventory.ref,
+            label: `Reversión inventario ${inventory.ref}`,
+            createdByUserId: userId ?? null,
+            movedAt: new Date(),
+          }),
+        );
+      }
+
+      // Reset status to draft
+      await invRepo.update(inventoryId, { status: 0 });
+
+      await qr.commitTransaction();
+
+      return invRepo.findOne({ where: { id: inventoryId } }) as Promise<Inventory>;
+    } catch (e) {
+      await qr.rollbackTransaction();
+      throw e;
+    } finally {
+      await qr.release();
     }
-    await this.inventoryRepo.update(inventoryId, { status: 0 });
-    return this.inventoryRepo.findOne({ where: { id: inventoryId } }) as Promise<Inventory>;
   }
 
   async remove(inventoryId: number): Promise<void> {

@@ -11,14 +11,10 @@ import type { Product, Order } from '../../../shared/types';
 
 function StockAlertWidget() {
   const navigate = useNavigate();
-  const { data, isLoading } = useQuery({
-    queryKey: ['products', 'dashboard'],
-    queryFn: () => productsApi.list({ limit: 100 }),
+  const { data: alertProducts = [], isLoading } = useQuery({
+    queryKey: ['products', 'low-stock'],
+    queryFn: () => productsApi.getLowStock(),
   });
-
-  const alertProducts = (data?.data ?? []).filter(
-    (p) => p.stock <= p.stockAlertThreshold,
-  );
 
   if (isLoading) {
     return (

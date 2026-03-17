@@ -11,6 +11,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Skeleton } from 'primereact/skeleton';
 import { permissionsApi } from '../api/permissionsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { User, PermissionGroup } from '../../../shared/types';
 
 /** Map from permission code to human-readable Spanish label */
@@ -113,7 +114,7 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
       toast.current?.show({ severity: 'success', summary: 'Agregado', detail: 'Usuario agregado al grupo', life: 3000 });
       setSelectedGroupId(null);
     },
-    onError: () => toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo agregar', life: 4000 }),
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo agregar al grupo'), life: 4000 }),
   });
 
   const removeFromGroupMutation = useMutation({
@@ -123,7 +124,7 @@ export function UserPermissionsPanel({ user, onHide }: Props) {
       void qc.invalidateQueries({ queryKey: ['user-permissions', user?.id] });
       toast.current?.show({ severity: 'success', summary: 'Quitado', detail: 'Usuario quitado del grupo', life: 3000 });
     },
-    onError: () => toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo quitar', life: 4000 }),
+    onError: (err) => toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo quitar del grupo'), life: 4000 }),
   });
 
   const handleRemoveFromGroup = (group: PermissionGroup) => {

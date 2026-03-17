@@ -60,7 +60,7 @@ export class PermissionsService {
 
   async findGroupById(id: number, requestingUser: AuthenticatedUser): Promise<PermissionGroup> {
     const group = await this.groupRepo.findOne({ where: { id } });
-    if (!group) throw new NotFoundException(`Permission group #${id} not found`);
+    if (!group) throw new NotFoundException(`Grupo de permisos #${id} no encontrado`);
     this.assertTenantAccess(group.tenantId, requestingUser);
     return group;
   }
@@ -114,7 +114,7 @@ export class PermissionsService {
   ): Promise<void> {
     await this.findGroupById(groupId, requestingUser);
     const perm = await this.permRepo.findOne({ where: { id: permissionId } });
-    if (!perm) throw new NotFoundException(`Permission #${permissionId} not found`);
+    if (!perm) throw new NotFoundException(`Permiso #${permissionId} no encontrado`);
     const existing = await this.groupItemRepo.findOne({ where: { groupId, permissionId } });
     if (existing) return; // idempotent
     await this.groupItemRepo.save(this.groupItemRepo.create({ groupId, permissionId }));
@@ -127,7 +127,7 @@ export class PermissionsService {
   ): Promise<void> {
     await this.findGroupById(groupId, requestingUser);
     const item = await this.groupItemRepo.findOne({ where: { groupId, permissionId } });
-    if (!item) throw new NotFoundException(`Permission #${permissionId} not in group #${groupId}`);
+    if (!item) throw new NotFoundException(`Permiso #${permissionId} no asignado al grupo #${groupId}`);
     await this.groupItemRepo.remove(item);
   }
 
@@ -154,13 +154,13 @@ export class PermissionsService {
   ): Promise<void> {
     await this.findGroupById(groupId, requestingUser);
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException(`User #${userId} not found`);
+    if (!user) throw new NotFoundException(`Usuario #${userId} no encontrado`);
     // Ensure user belongs to same tenant (unless super_admin)
     if (
       requestingUser.userType !== 'super_admin' &&
       user.entity !== requestingUser.tenantId
     ) {
-      throw new ForbiddenException('Cannot add user from a different tenant');
+      throw new ForbiddenException('No se puede agregar un usuario de otra organización');
     }
     const existing = await this.userGroupRepo.findOne({ where: { groupId, userId } });
     if (existing) return; // idempotent
@@ -175,7 +175,7 @@ export class PermissionsService {
   ): Promise<void> {
     await this.findGroupById(groupId, requestingUser);
     const membership = await this.userGroupRepo.findOne({ where: { groupId, userId } });
-    if (!membership) throw new NotFoundException(`User #${userId} is not a member of group #${groupId}`);
+    if (!membership) throw new NotFoundException(`Usuario #${userId} no es miembro del grupo #${groupId}`);
     await this.userGroupRepo.remove(membership);
   }
 
@@ -186,7 +186,7 @@ export class PermissionsService {
     requestingUser: AuthenticatedUser,
   ): Promise<{ effective: string[]; overrides: UserPermission[] }> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException(`User #${userId} not found`);
+    if (!user) throw new NotFoundException(`Usuario #${userId} no encontrado`);
     this.assertTenantAccess(user.entity, requestingUser);
 
     const memberships = await this.userGroupRepo.find({ where: { userId } });
@@ -224,11 +224,11 @@ export class PermissionsService {
     requestingUser: AuthenticatedUser,
   ): Promise<UserPermission> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException(`User #${userId} not found`);
+    if (!user) throw new NotFoundException(`Usuario #${userId} no encontrado`);
     this.assertTenantAccess(user.entity, requestingUser);
 
     const perm = await this.permRepo.findOne({ where: { id: dto.permissionId } });
-    if (!perm) throw new NotFoundException(`Permission #${dto.permissionId} not found`);
+    if (!perm) throw new NotFoundException(`Permiso #${dto.permissionId} no encontrado`);
 
     let up = await this.userPermRepo.findOne({
       where: { userId, permissionId: dto.permissionId },
@@ -247,11 +247,11 @@ export class PermissionsService {
     requestingUser: AuthenticatedUser,
   ): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException(`User #${userId} not found`);
+    if (!user) throw new NotFoundException(`Usuario #${userId} no encontrado`);
     this.assertTenantAccess(user.entity, requestingUser);
 
     const up = await this.userPermRepo.findOne({ where: { userId, permissionId } });
-    if (!up) throw new NotFoundException(`Override not found for user #${userId}, permission #${permissionId}`);
+    if (!up) throw new NotFoundException(`Permiso individual no encontrado para usuario #${userId}, permiso #${permissionId}`);
     await this.userPermRepo.remove(up);
   }
 
@@ -263,7 +263,7 @@ export class PermissionsService {
   ): void {
     if (requestingUser.userType === 'super_admin') return;
     if (resourceTenantId !== null && resourceTenantId !== requestingUser.tenantId) {
-      throw new ForbiddenException('Access denied: resource belongs to a different tenant');
+      throw new ForbiddenException('Acceso denegado: el recurso pertenece a otra organización');
     }
   }
 }

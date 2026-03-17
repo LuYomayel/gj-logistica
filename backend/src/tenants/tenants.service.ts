@@ -21,13 +21,14 @@ export class TenantsService {
 
   async findOne(id: number): Promise<Tenant> {
     const tenant = await this.tenantRepo.findOne({ where: { id } });
-    if (!tenant) throw new NotFoundException(`Tenant #${id} not found`);
+    if (!tenant) throw new NotFoundException(`Organización #${id} no encontrada`);
     return tenant;
   }
 
   async create(dto: CreateTenantDto): Promise<Tenant> {
     const existing = await this.tenantRepo.findOne({ where: { code: dto.code } });
-    if (existing) throw new ConflictException(`Tenant with code "${dto.code}" already exists`);
+    if (existing) throw new ConflictException(`Ya existe una organización con código "${dto.code}"`)
+;
     const tenant = this.tenantRepo.create({ ...dto, isActive: dto.isActive ?? true });
     return this.tenantRepo.save(tenant);
   }
@@ -36,7 +37,8 @@ export class TenantsService {
     const tenant = await this.findOne(id);
     if (dto.code && dto.code !== tenant.code) {
       const existing = await this.tenantRepo.findOne({ where: { code: dto.code } });
-      if (existing) throw new ConflictException(`Tenant with code "${dto.code}" already exists`);
+      if (existing) throw new ConflictException(`Ya existe una organización con código "${dto.code}"`)
+;
     }
     Object.assign(tenant, dto);
     return this.tenantRepo.save(tenant);

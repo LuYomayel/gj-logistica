@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { useMutation } from '@tanstack/react-query';
 import { usersApi } from '../api/usersApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { User } from '../../../shared/types';
 
 interface Props {
@@ -49,9 +50,8 @@ export function ChangePasswordDialog({ visible, onHide, targetUser, isSelf }: Pr
       });
       onHide();
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      const msg = err?.response?.data?.message ?? 'No se pudo cambiar la contraseña';
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: msg, life: 5000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo cambiar la contraseña'), life: 5000 });
     },
   });
 

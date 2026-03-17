@@ -7,8 +7,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import axios from 'axios';
 import { productsApi, type CreateProductPayload } from '../api/productsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 
 interface Props {
   visible: boolean;
@@ -26,15 +26,6 @@ const VENTA_OPTIONS = [
   { label: 'Para vender', value: 1 },
   { label: 'No para vender', value: 0 },
 ];
-
-const apiErrMsg = (err: unknown, fallback: string): string => {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg.join(', ');
-  }
-  return fallback;
-};
 
 type FormValues = Omit<CreateProductPayload, 'price' | 'vatRate' | 'stockAlertThreshold' | 'desiredStock' | 'isSellable'> & {
   price: number | null;

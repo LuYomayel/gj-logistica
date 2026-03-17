@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -17,18 +16,10 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { inventoriesApi, type AddLinePayload } from '../api/inventoriesApi';
 import { warehousesApi } from '../../warehouses/api/warehousesApi';
 import { productsApi } from '../../products/api/productsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { InventoryLine, Product } from '../../../shared/types';
 import { INVENTORY_STATUS } from '../../../shared/types';
-
-const apiErrMsg = (err: unknown, fallback: string): string => {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg.join(', ');
-  }
-  return fallback;
-};
 
 export function InventoryDetail() {
   const { id } = useParams<{ id: string }>();

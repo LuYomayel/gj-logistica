@@ -9,22 +9,13 @@ import { AutoComplete } from 'primereact/autocomplete';
 import type { AutoCompleteCompleteEvent } from 'primereact/autocomplete';
 import { InputNumber } from 'primereact/inputnumber';
 import { useRef, useState } from 'react';
-import axios from 'axios';
 import { ordersApi, type AddOrderLinePayload } from '../api/ordersApi';
 import { productsApi } from '../../products/api/productsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { EditOrderDialog } from './EditOrderDialog';
 import { StatusBadge } from '../../../shared/components/StatusBadge';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Order, OrderLine, Product } from '../../../shared/types';
-
-const apiErrMsg = (err: unknown, fallback: string): string => {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg.join(', ');
-  }
-  return fallback;
-};
 
 interface InfoRowProps {
   label: string;

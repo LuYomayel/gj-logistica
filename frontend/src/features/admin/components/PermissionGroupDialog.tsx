@@ -9,6 +9,7 @@ import { Toast } from 'primereact/toast';
 import { Divider } from 'primereact/divider';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { permissionsApi } from '../api/permissionsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { Permission, PermissionGroup } from '../../../shared/types';
 
 interface Props {
@@ -93,8 +94,8 @@ export function PermissionGroupDialog({ visible, onHide, group }: Props) {
       toast.current?.show({ severity: 'success', summary: 'Creado', detail: 'Grupo creado correctamente', life: 3000 });
       onHide();
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo crear el grupo', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo crear el grupo'), life: 4000 });
     },
   });
 
@@ -114,8 +115,8 @@ export function PermissionGroupDialog({ visible, onHide, group }: Props) {
       toast.current?.show({ severity: 'success', summary: 'Guardado', detail: 'Grupo actualizado', life: 3000 });
       onHide();
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo actualizar el grupo'), life: 4000 });
     },
   });
 

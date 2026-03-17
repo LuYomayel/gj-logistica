@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, type CreateUserDto } from '../api/usersApi';
 import { tenantsApi } from '../../admin/api/tenantsApi';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { UserType } from '../../../shared/types';
 
 interface Props {
@@ -127,9 +128,8 @@ export function CreateUserDialog({ visible, onHide, tenantId, onCreated }: Props
       onCreated?.();
       onHide();
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      const msg = err?.response?.data?.message ?? 'No se pudo crear el usuario';
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: msg, life: 5000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo crear el usuario'), life: 5000 });
     },
   });
 

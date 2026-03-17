@@ -46,9 +46,15 @@ apiClient.interceptors.response.use(
   },
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('gj_token');
-      localStorage.removeItem('gj_user');
-      window.location.href = '/login';
+      // Don't redirect if the 401 came from the login endpoint itself —
+      // let the LoginForm catch block handle the error and show a message.
+      const requestUrl = err.config?.url ?? '';
+      const isLoginRequest = requestUrl.includes('/auth/login');
+      if (!isLoginRequest) {
+        localStorage.removeItem('gj_token');
+        localStorage.removeItem('gj_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   },

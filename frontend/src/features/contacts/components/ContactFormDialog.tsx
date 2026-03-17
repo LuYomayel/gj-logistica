@@ -6,9 +6,9 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { contactsApi, type CreateContactPayload } from '../api/contactsApi';
 import { thirdPartiesApi } from '../../third-parties/api/thirdPartiesApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { Contact } from '../../../shared/types';
 
 interface Props {
@@ -48,15 +48,6 @@ const emptyValues: FormValues = {
   dni: null,
   lugarDeEntrega: '',
   nombreFantasia: '',
-};
-
-const apiErrMsg = (err: unknown, fallback: string): string => {
-  if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg.join(', ');
-  }
-  return fallback;
 };
 
 export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) {

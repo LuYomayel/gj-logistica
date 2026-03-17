@@ -12,6 +12,7 @@ import { Toast } from "primereact/toast";
 import { ordersApi, type CreateOrderPayload } from "../api/ordersApi";
 import { thirdPartiesApi } from "../../third-parties/api/thirdPartiesApi";
 import { warehousesApi } from "../../warehouses/api/warehousesApi";
+import { apiErrMsg } from "../../../shared/utils/apiErrMsg";
 
 interface Props {
   visible: boolean;
@@ -106,11 +107,11 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
       onHide();
       navigate(`/orders/${order.id}`);
     },
-    onError: () => {
+    onError: (err) => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo crear el pedido",
+        detail: apiErrMsg(err, "No se pudo crear el pedido"),
         life: 4000,
       });
     },

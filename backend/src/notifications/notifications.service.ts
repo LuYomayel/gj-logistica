@@ -95,15 +95,34 @@ export class NotificationsService {
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private buildSubject(event: OrderEventType, order: Order): string {
+    // Subject is plain text (not HTML) so no XSS risk, but still safe to use raw ref
     return event === 'ORDER_VALIDATE'
-      ? `✅ Pedido validado: ${order.ref}`
-      : `🚚 Pedido despachado: ${order.ref}`;
+      ? `Pedido validado: ${order.ref}`
+      : `Pedido despachado: ${order.ref}`;
+  }
+
+  /** Escape HTML special characters to prevent XSS in email templates */
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private buildEmailHtml(event: OrderEventType, order: Order): string {
     const isValidate = event === 'ORDER_VALIDATE';
     const accent     = '#0891b2';
     const accentDark = '#0e7490';
+
+    // Escape all user-supplied values before interpolation
+    const safeRef = this.escapeHtml(order.ref ?? '');
+    const safeAgencia = order.agencia ? this.escapeHtml(order.agencia) : null;
+    const safeNroSeguimiento = order.nroSeguimiento ? this.escapeHtml(order.nroSeguimiento) : null;
+    const rawThirdPartyName = (order.thirdParty as { name?: string })?.name ?? `Cliente #${order.thirdPartyId}`;
+    const safeThirdPartyName = this.escapeHtml(rawThirdPartyName);
+    const safeWarehouseName  = this.escapeHtml((order.warehouse as { name?: string })?.name ?? '—');
 
     const statusChip = isValidate
       ? `<span style="background:#dcfce7; color:#16a34a; font-size:12px; font-weight:700; padding:4px 14px; border-radius:20px;">Validado</span>`
@@ -114,11 +133,9 @@ export class NotificationsService {
       : 'Un pedido fue despachado';
 
     const bodyText = isValidate
-      ? `El pedido <strong>${order.ref}</strong> fue validado exitosamente. Se ha descontado el stock correspondiente. Encontrará el detalle completo en el PDF adjunto.`
-      : `El pedido <strong>${order.ref}</strong> fue marcado como despachado. Encontrará el detalle completo en el PDF adjunto.`;
+      ? `El pedido <strong>${safeRef}</strong> fue validado exitosamente. Se ha descontado el stock correspondiente. Encontrará el detalle completo en el PDF adjunto.`
+      : `El pedido <strong>${safeRef}</strong> fue marcado como despachado. Encontrará el detalle completo en el PDF adjunto.`;
 
-    const thirdPartyName = (order.thirdParty as { name?: string })?.name ?? `Cliente #${order.thirdPartyId}`;
-    const warehouseName  = (order.warehouse as { name?: string })?.name  ?? '—';
     const lines          = (order.lines ?? []) as { quantity?: number }[];
     const totalQty       = lines.reduce((s, l) => s + (l.quantity ?? 0), 0);
     const fmtDate        = (d: Date | string | null | undefined) =>
@@ -174,7 +191,7 @@ export class NotificationsService {
                 <!-- Ref -->
                 <tr>
                   <td style="padding:10px 20px; color:#64748b; font-size:12px; width:160px;">Número de pedido</td>
-                  <td style="padding:10px 20px; color:#0f172a; font-weight:800; font-size:15px; font-family:monospace;">${order.ref}</td>
+                  <td style="padding:10px 20px; color:#0f172a; font-weight:800; font-size:15px; font-family:monospace;">${safeRef}</td>
                 </tr>
                 <!-- Date -->
                 <tr style="background:#ffffff;">
@@ -184,27 +201,27 @@ export class NotificationsService {
                 <!-- Client -->
                 <tr>
                   <td style="padding:10px 20px; color:#64748b; font-size:12px;">Cliente</td>
-                  <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${thirdPartyName}</td>
+                  <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${safeThirdPartyName}</td>
                 </tr>
                 <!-- Warehouse -->
                 <tr style="background:#ffffff;">
                   <td style="padding:10px 20px; color:#64748b; font-size:12px;">Almacén</td>
-                  <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${warehouseName}</td>
+                  <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${safeWarehouseName}</td>
                 </tr>
                 <!-- Lines / qty -->
                 <tr>
                   <td style="padding:10px 20px; color:#64748b; font-size:12px;">Líneas / Unidades</td>
                   <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${lines.length} líneas &mdash; ${totalQty.toLocaleString('es-AR')} unidades</td>
                 </tr>
-                ${order.agencia ? `
+                ${safeAgencia ? `
                 <tr style="background:#ffffff;">
                   <td style="padding:10px 20px; color:#64748b; font-size:12px;">Agencia</td>
-                  <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${order.agencia}</td>
+                  <td style="padding:10px 20px; color:#0f172a; font-weight:600; font-size:13px;">${safeAgencia}</td>
                 </tr>` : ''}
-                ${order.nroSeguimiento ? `
+                ${safeNroSeguimiento ? `
                 <tr>
                   <td style="padding:10px 20px; color:#64748b; font-size:12px;">Nro. Seguimiento</td>
-                  <td style="padding:10px 20px; color:#0f172a; font-weight:700; font-size:13px; font-family:monospace;">${order.nroSeguimiento}</td>
+                  <td style="padding:10px 20px; color:#0f172a; font-weight:700; font-size:13px; font-family:monospace;">${safeNroSeguimiento}</td>
                 </tr>` : ''}
               </table>
 
@@ -212,7 +229,7 @@ export class NotificationsService {
               <div style="background:#ecfeff; border:1px solid #a5f3fc; border-radius:10px; padding:14px 18px; display:flex; align-items:center; gap:12px;">
                 <span style="font-size:20px;">📎</span>
                 <p style="margin:0; color:#0e7490; font-size:13px; line-height:1.5;">
-                  El <strong>PDF completo del pedido</strong> se encuentra adjunto a este correo (<strong>${order.ref}.pdf</strong>).
+                  El <strong>PDF completo del pedido</strong> se encuentra adjunto a este correo (<strong>${safeRef}.pdf</strong>).
                 </p>
               </div>
 

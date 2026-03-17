@@ -9,6 +9,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Skeleton } from 'primereact/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { tenantsApi } from '../api/tenantsApi';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { TenantFormDialog } from './TenantFormDialog';
 import type { Tenant } from '../../../shared/types';
 
@@ -30,8 +31,8 @@ export function TenantsTable() {
       void qc.invalidateQueries({ queryKey: ['tenants'] });
       toast.current?.show({ severity: 'success', summary: 'Desactivado', detail: 'Organización desactivada', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo desactivar la organización'), life: 4000 });
     },
   });
 
@@ -41,8 +42,8 @@ export function TenantsTable() {
       void qc.invalidateQueries({ queryKey: ['tenants'] });
       toast.current?.show({ severity: 'success', summary: 'Activado', detail: 'Organización reactivada', life: 3000 });
     },
-    onError: () => {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo activar', life: 4000 });
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo activar la organización'), life: 4000 });
     },
   });
 
