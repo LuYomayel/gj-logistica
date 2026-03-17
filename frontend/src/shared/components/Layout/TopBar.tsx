@@ -10,7 +10,8 @@ interface TopNavSection {
   to: string;
   /** Route prefixes that make this section "active" */
   matchPrefixes: string[];
-  permission?: string;
+  /** Section is visible if the user has ANY of these permissions */
+  permissions?: string[];
   superAdminOnly?: boolean;
 }
 
@@ -26,21 +27,21 @@ const SECTIONS: TopNavSection[] = [
     icon: 'pi pi-briefcase',
     to: '/orders',
     matchPrefixes: ['/orders', '/third-parties', '/contacts'],
-    permission: 'orders.read',
+    permissions: ['orders.read', 'third_parties.read', 'contacts.read'],
   },
   {
     label: 'Almacén',
     icon: 'pi pi-warehouse',
     to: '/warehouses',
     matchPrefixes: ['/warehouses', '/products', '/inventories', '/stock'],
-    permission: 'stock.read',
+    permissions: ['stock.read', 'products.read', 'stock.read_inventories', 'stock.read_movements'],
   },
   {
     label: 'Administración',
     icon: 'pi pi-cog',
     to: '/users',
     matchPrefixes: ['/users'],
-    permission: 'users.read',
+    permissions: ['users.read'],
   },
   {
     label: 'Super Admin',
@@ -70,7 +71,8 @@ export function TopBar() {
 
   const visibleSections = SECTIONS.filter((s) => {
     if (s.superAdminOnly && !isSuperAdmin) return false;
-    if (s.permission && !hasPermission(s.permission)) return false;
+    // Show section if user has ANY of the listed permissions
+    if (s.permissions && s.permissions.length > 0 && !s.permissions.some((p) => hasPermission(p))) return false;
     return true;
   });
 

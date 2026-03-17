@@ -1,5 +1,7 @@
 import {
-  Injectable, NotFoundException, ConflictException,
+  Injectable,
+  NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository, FindOptionsWhere } from 'typeorm';
@@ -10,12 +12,15 @@ export class UpdateContactDto extends CreateContactDto {}
 
 @Injectable()
 export class ContactsService {
-  constructor(
-    @InjectRepository(Contact) private repo: Repository<Contact>,
-  ) {}
+  constructor(@InjectRepository(Contact) private repo: Repository<Contact>) {}
 
-  async findAll(search?: string, tenantId?: number | null, thirdPartyId?: number): Promise<Contact[]> {
-    const tenantFilter = tenantId !== null && tenantId !== undefined ? { entity: tenantId } : {};
+  async findAll(
+    search?: string,
+    tenantId?: number | null,
+    thirdPartyId?: number,
+  ): Promise<Contact[]> {
+    const tenantFilter =
+      tenantId !== null && tenantId !== undefined ? { entity: tenantId } : {};
     const tpFilter = thirdPartyId ? { thirdPartyId } : {};
     const baseFilter = { ...tenantFilter, ...tpFilter };
 
@@ -27,11 +32,13 @@ export class ContactsService {
       ];
       return this.repo.find({
         where,
+        relations: ['thirdParty'],
         order: { lastName: 'ASC' },
       });
     }
     return this.repo.find({
       where: baseFilter,
+      relations: ['thirdParty'],
       order: { lastName: 'ASC' },
     });
   }
@@ -47,12 +54,19 @@ export class ContactsService {
     return contact;
   }
 
-  async create(dto: CreateContactDto, tenantId: number | null): Promise<Contact> {
+  async create(
+    dto: CreateContactDto,
+    tenantId: number | null,
+  ): Promise<Contact> {
     if (dto.dni) {
       const existing = await this.repo.findOne({ where: { dni: dto.dni } });
       if (existing) throw new ConflictException(`DNI ${dto.dni} ya registrado`);
     }
-    const contact = this.repo.create({ ...dto, status: 1, entity: tenantId ?? 1 });
+    const contact = this.repo.create({
+      ...dto,
+      status: 1,
+      entity: tenantId ?? 1,
+    });
     return this.repo.save(contact);
   }
 
