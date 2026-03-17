@@ -59,8 +59,9 @@ export const productsApi = {
     await apiClient.delete(`/products/${id}`);
   },
   getLowStock: async (): Promise<Product[]> => {
-    const { data } = await apiClient.get<Product[]>('/products/low-stock');
-    return data;
+    const { data } = await apiClient.get('/products/low-stock');
+    // Interceptor wraps arrays into { data, total, page, limit } — unwrap
+    return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.data as Product[] ?? []);
   },
   getStats: async (filters: ProductStatsFilters = {}): Promise<ProductStats> => {
     const { data } = await apiClient.get('/products/stats', { params: filters });
