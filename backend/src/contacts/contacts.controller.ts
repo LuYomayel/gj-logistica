@@ -30,6 +30,7 @@ export class ContactsController {
   }
 
   @Get(':id')
+  @RequiresPermission('contacts.read')
   @ApiOperation({ summary: 'Detalle de contacto' })
   findOne(
     @Param('id', ParseIntPipe) id: number,

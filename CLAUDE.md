@@ -46,11 +46,17 @@ dolibarr/
 - Order ref format: `SOyymm-nnnn` — use `order_sequences` table with row lock, not MAX()+1 query
 - Email notifications (ORDER_VALIDATE, ORDER_CLOSE) are sent AFTER transaction commit, non-blocking
 
-### Testing
+### Testing — TDD (Test-Driven Development)
+- **Methodology: Red → Green → Refactor**
+  1. **Red:** Write the test FIRST — define what the code should do (test fails because code doesn't exist yet)
+  2. **Green:** Write the MINIMUM code to make the test pass
+  3. **Refactor:** Clean up the code while keeping tests green
 - **MANDATORY:** Every module must have Jest unit tests in `*.spec.ts` files
+- **MANDATORY:** When implementing new features or fixing bugs, ALWAYS write the test first
 - Test services with mocked repositories (`jest.fn()`)
 - Tests must pass before moving to the next roadmap phase
 - Run with `npm run test` from `backend/`
+- When fixing a bug: write a test that reproduces the bug FIRST (Red), then fix the code (Green)
 
 ### Code Style
 - Use `async/await` — never callbacks or `.then()` chains
@@ -115,9 +121,10 @@ dolibarr/
 
 ## ROADMAP PHASES (current progress tracked here)
 - [x] **Phase 1** — Backend Core: Auth, Users, Groups, Third Parties, Contacts + Tests ✅ 33/33 tests
-- [ ] **Phase 2** — Products, Warehouses, Stock, Orders (validation logic) + Tests
-- [ ] **Phase 3** — ETL: migrate data from Dolibarr MySQL
-- [ ] **Phase 4** — Frontend React: all screens
-- [ ] **Phase 5** — e2e tests, Swagger, Docker, Deploy
+- [x] **Phase 2** — Products, Warehouses, Stock, Orders (validation logic) + Tests ✅ 65 tests
+- [x] **Phase 3** — ETL: migrate data from Dolibarr MySQL ✅ 15 migrators
+- [x] **Phase 4** — Frontend React: all screens ✅
+- [ ] **Phase 5** — e2e tests, Swagger, Docker, Deploy (E2E: 161 tests, 157 pass, 4 skip)
+- [ ] **Phase 6** — Security hardening & bug fixes (TDD)
 
 **Gate rule:** Do NOT start the next phase until all Jest tests for the current phase pass.

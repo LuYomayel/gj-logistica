@@ -32,7 +32,7 @@ import { PermissionsModule } from './permissions/permissions.module';
         database: config.get('DB_NAME', 'gj_logistica'),
         entities: [__dirname + '/entities/*.entity{.ts,.js}'],
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        synchronize: true,
+        synchronize: false,
         logging: config.get('NODE_ENV') === 'development',
         timezone: '+00:00',
       }),

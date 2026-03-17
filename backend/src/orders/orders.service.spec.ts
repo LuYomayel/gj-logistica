@@ -45,6 +45,7 @@ function buildMockQR(overrides: Record<string, unknown> = {}) {
   };
   const mockProdRepo = {
     decrement: jest.fn().mockResolvedValue({}),
+    increment: jest.fn().mockResolvedValue({}),
   };
 
   const qr = {
@@ -62,6 +63,7 @@ function buildMockQR(overrides: Record<string, unknown> = {}) {
         if (entity === Product) return mockProdRepo;
       }),
       query: jest.fn().mockImplementation((sql: string) => {
+        if (sql.includes('LAST_INSERT_ID()')) return Promise.resolve([{ seq: 1 }]);
         if (sql.includes('SELECT currentSeq')) return Promise.resolve([{ currentSeq: 1 }]);
         return Promise.resolve([]);
       }),

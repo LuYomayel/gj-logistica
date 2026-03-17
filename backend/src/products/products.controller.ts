@@ -1,7 +1,7 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Param, Body, Query, ParseIntPipe,
-  Res, UseInterceptors, UploadedFile,
+  Res, UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -30,6 +30,7 @@ export class ProductsController {
   }
 
   @Get('stats')
+  @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Estadísticas de productos: popularidad y desglose por rubro' })
   getStats(
     @Query() filter: ProductStatsDto,
@@ -39,6 +40,7 @@ export class ProductsController {
   }
 
   @Get('low-stock')
+  @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Productos con stock bajo el umbral de alerta' })
   getLowStock(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getLowStock(user.tenantId);
@@ -59,23 +61,41 @@ export class ProductsController {
 
   @Post('import')
   @RequiresPermission('products.write')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+    fileFilter: (_req: any, file: any, cb: any) => {
+      const allowedMimes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'text/csv',
+      ];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new BadRequestException(
+          `Tipo de archivo no permitido: ${file.mimetype}. Solo se aceptan .xlsx, .xls y .csv`,
+        ), false);
+      }
+    },
+  }))
   @ApiOperation({ summary: 'Importar productos desde Excel (.xlsx) o CSV' })
   async importExcel(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    if (!file) throw new Error('No se recibió archivo');
+    if (!file) throw new BadRequestException('No se recibió archivo');
     return this.service.importFromExcel(file.buffer, user.id, user.tenantId);
   }
 
   @Get('ref/:ref')
+  @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Buscar producto por referencia' })
   findByRef(@Param('ref') ref: string) {
     return this.service.findByRef(ref);
   }
 
   @Get(':id')
+  @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Detalle de producto' })
   findOne(
     @Param('id', ParseIntPipe) id: number,

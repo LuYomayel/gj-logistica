@@ -25,6 +25,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @RequiresPermission('users.read')
   @ApiOperation({ summary: 'Detalle de usuario' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
@@ -43,8 +44,12 @@ export class UsersController {
   @Patch(':id')
   @RequiresPermission('users.write')
   @ApiOperation({ summary: 'Actualizar usuario' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() requester: AuthenticatedUser,
+  ) {
+    return this.usersService.update(id, dto, requester);
   }
 
   @Delete(':id')
@@ -72,6 +77,7 @@ export class UsersController {
   }
 
   @Get(':id/groups')
+  @RequiresPermission('users.read')
   @ApiOperation({ summary: 'Grupos del usuario' })
   getUserGroups(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.getUserGroups(id);

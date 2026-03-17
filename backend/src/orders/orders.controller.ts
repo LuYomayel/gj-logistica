@@ -33,6 +33,7 @@ export class OrdersController {
   }
 
   @Get('stats')
+  @RequiresPermission('orders.read')
   @ApiOperation({ summary: 'Estadísticas de pedidos: por mes/año y por estado' })
   getStats(
     @Query() filter: OrderStatsDto,
@@ -71,6 +72,7 @@ export class OrdersController {
   }
 
   @Get(':id')
+  @RequiresPermission('orders.read')
   @ApiOperation({ summary: 'Obtener pedido por ID con líneas' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
