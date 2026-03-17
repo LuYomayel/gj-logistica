@@ -57,6 +57,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   'products.delete': 'Eliminar productos',
   'products.export': 'Exportar productos',
   'products.ignore_min_price': 'Ignorar precio mínimo',
+  'products.read_position': 'Ver ubicación/posición de productos',
   'stock.read': 'Ver stock',
   'stock.write_warehouses': 'Crear y modificar almacenes',
   'stock.delete_warehouses': 'Eliminar almacenes',

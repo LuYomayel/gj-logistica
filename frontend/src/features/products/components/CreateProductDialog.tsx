@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { productsApi, type CreateProductPayload } from '../api/productsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
+import { useAuth } from '../../../shared/hooks/useAuth';
 
 interface Props {
   visible: boolean;
@@ -37,6 +38,7 @@ type FormValues = Omit<CreateProductPayload, 'price' | 'vatRate' | 'stockAlertTh
 
 export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
   const [errorMsg, setErrorMsg] = useState('');
 
   const { control, handleSubmit, reset, register, formState: { errors } } = useForm<FormValues>({
@@ -268,10 +270,12 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
               <label className="text-sm font-medium text-gray-700">Color</label>
               <InputText {...register('color')} placeholder="Color..." className="w-full" />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Posición</label>
-              <InputText {...register('posicion')} placeholder="Ej: A1-B2" className="w-full" />
-            </div>
+            {hasPermission('products.read_position') && (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-gray-700">Posición</label>
+                <InputText {...register('posicion')} placeholder="Ej: A1-B2" className="w-full" />
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Nivel económico</label>
               <Controller

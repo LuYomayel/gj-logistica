@@ -53,7 +53,8 @@ export class ProductsController {
     @Res() res: Response,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const csv = await this.service.exportCsv(user.tenantId);
+    const canReadPosition = user.permissions.includes('*') || user.permissions.includes('products.read_position');
+    const csv = await this.service.exportCsv(user.tenantId, canReadPosition);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="productos.csv"');
     res.send('\uFEFF' + csv);

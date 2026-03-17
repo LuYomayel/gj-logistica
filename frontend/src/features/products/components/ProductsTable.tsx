@@ -239,7 +239,9 @@ export function ProductsTable() {
               </span>
             )}
           />
-          <Column field="posicion" header="Posicion" style={{ width: '100px' }} />
+          {hasPermission('products.read_position') && (
+            <Column field="posicion" header="Posición" style={{ width: '100px' }} />
+          )}
           <Column field="color" header="Color" style={{ width: '100px' }} />
         </DataTable>
       </div>

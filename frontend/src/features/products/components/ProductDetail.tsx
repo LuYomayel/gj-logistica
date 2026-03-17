@@ -227,7 +227,9 @@ export function ProductDetail({ id }: Props) {
                   </h3>
                   <InfoRow label="Talle" value={product.talle} />
                   <InfoRow label="Color" value={product.color} />
-                  <InfoRow label="Posición" value={product.posicion} />
+                  {hasPermission('products.read_position') && (
+                    <InfoRow label="Posición" value={product.posicion} />
+                  )}
                   <InfoRow label="Nivel Económico" value={product.nivelEconomico} />
                   <InfoRow label="EAN Interno" value={product.eanInterno} />
                   <InfoRow label="Keywords" value={product.keywords} />

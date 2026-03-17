@@ -118,7 +118,7 @@ export class ProductsService {
   /**
    * Export all products as a UTF-8 CSV string.
    */
-  async exportCsv(tenantId: number | null): Promise<string> {
+  async exportCsv(tenantId: number | null, includePosition = true): Promise<string> {
     const qb = this.repo.createQueryBuilder('p').orderBy('p.ref', 'ASC');
     if (tenantId !== null) qb.andWhere('p.entity = :tenantId', { tenantId });
     const products = await qb.getMany();
@@ -128,21 +128,24 @@ export class ProductsService {
     const headers = [
       'Id', 'Ref', 'Etiqueta', 'Código de barras', 'Precio', 'IVA%',
       'Stock', 'Stock Alerta', 'Stock Deseado',
-      'Rubro', 'SubRubro', 'Marca', 'Talle', 'Color', 'Posicion',
+      'Rubro', 'SubRubro', 'Marca', 'Talle', 'Color',
+      ...(includePosition ? ['Posicion'] : []),
       'Nivel Económico', 'EAN Interno', 'Keywords', 'Estado Venta',
     ];
     const rows: string[] = [headers.map(q).join(',')];
 
     for (const p of products) {
-      rows.push([
+      const fields: unknown[] = [
         p.id, p.ref, p.label ?? '', p.barcode ?? '',
         p.price ?? '', p.vatRate ?? '',
         p.stock, p.stockAlertThreshold, p.desiredStock,
         p.rubro ?? '', p.subrubro ?? '', p.marca ?? '',
-        p.talle ?? '', p.color ?? '', p.posicion ?? '',
+        p.talle ?? '', p.color ?? '',
+        ...(includePosition ? [p.posicion ?? ''] : []),
         p.nivelEconomico ?? '', p.eanInterno ?? '', p.keywords ?? '',
         p.isSellable,
-      ].map(q).join(','));
+      ];
+      rows.push(fields.map(q).join(','));
     }
     return rows.join('\n');
   }
