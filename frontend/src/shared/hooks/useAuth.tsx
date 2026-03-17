@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthUser } from '../types';
+import { authApi } from '../../features/auth/api/authApi';
 
 /** Decode JWT payload without external libraries */
 function decodeJwtPayload(token: string): { exp?: number } | null {
@@ -27,6 +28,8 @@ interface AuthCtx {
   token: string | null;
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
+  /** Re-fetch /auth/me and update permissions + user data in-place (no re-login needed) */
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
   /** Returns true if user has the given permission (or has wildcard '*') */
   hasPermission: (perm: string) => boolean;
@@ -64,12 +67,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('gj_token');
     localStorage.removeItem('gj_user');
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (!token || isTokenExpired(token)) return;
+    try {
+      const freshUser = await authApi.fetchMe();
+      localStorage.setItem('gj_user', JSON.stringify(freshUser));
+      setUser(freshUser);
+    } catch {
+      // If /auth/me fails (401, network error), don't crash — interceptor handles 401
+    }
+  }, [token]);
+
+  // Auto-refresh permissions when the user comes back to the tab
+  const refreshUserRef = useRef(refreshUser);
+  refreshUserRef.current = refreshUser;
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshUserRef.current();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   const hasPermission = useCallback(
     (perm: string): boolean => {
@@ -102,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, token, login, logout,
+      user, token, login, logout, refreshUser,
       isAuthenticated,
       hasPermission,
       isSuperAdmin, isClientAdmin, isClientUser,

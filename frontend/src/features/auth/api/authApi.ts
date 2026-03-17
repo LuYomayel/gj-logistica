@@ -49,4 +49,21 @@ export const authApi = {
 
     return { access_token: token, user };
   },
+
+  /** Fetch current user profile + permissions (uses existing JWT from interceptor) */
+  fetchMe: async (): Promise<AuthUser> => {
+    const { data: me } = await apiClient.get<BackendMe>('/auth/me');
+
+    return {
+      id: me.id,
+      username: me.username,
+      firstName: me.firstName ?? null,
+      lastName: me.lastName ?? null,
+      email: me.email,
+      isAdmin: me.isAdmin,
+      userType: me.userType ?? 'client_user',
+      tenantId: me.tenantId,
+      permissions: me.permissions ?? [],
+    };
+  },
 };
