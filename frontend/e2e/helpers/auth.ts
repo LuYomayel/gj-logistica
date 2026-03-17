@@ -1,11 +1,21 @@
 import { type Page, expect } from '@playwright/test';
 
 // ── Test credentials ───────────────────────────────────────────────────────
-// Must match users that exist in the DB.
+// Loaded from environment variables — set them in .env or CI secrets.
+// E.g.: E2E_SUPER_ADMIN_USER=comercial2  E2E_SUPER_ADMIN_PASS=***
 export const USERS = {
-  superAdmin: { username: 'comercial2', password: 'Temporal2026!' },
-  clientAdmin: { username: 'admin_acme', password: 'Test2026!' },
-  clientUser: { username: 'admin_stoller', password: 'Test2026!' },
+  superAdmin: {
+    username: process.env.E2E_SUPER_ADMIN_USER ?? 'comercial2',
+    password: process.env.E2E_SUPER_ADMIN_PASS ?? '',
+  },
+  clientAdmin: {
+    username: process.env.E2E_CLIENT_ADMIN_USER ?? 'admin_acme',
+    password: process.env.E2E_CLIENT_ADMIN_PASS ?? '',
+  },
+  clientUser: {
+    username: process.env.E2E_CLIENT_USER_USER ?? 'admin_stoller',
+    password: process.env.E2E_CLIENT_USER_PASS ?? '',
+  },
 } as const;
 
 // ── Login via UI ───────────────────────────────────────────────────────────
