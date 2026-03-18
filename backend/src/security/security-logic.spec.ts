@@ -16,6 +16,8 @@ import { OrderSequence } from '../entities/order-sequence.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { Product } from '../entities/product.entity';
+import { OrderContact } from '../entities/order-contact.entity';
+import { Contact } from '../entities/contact.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { User } from '../entities/user.entity';
@@ -125,6 +127,8 @@ describe('Bug #4 — validateOrder must atomically check+decrement stock', () =>
         { provide: getRepositoryToken(ProductStock), useValue: { findOne: jest.fn() } },
         { provide: getRepositoryToken(StockMovement), useValue: {} },
         { provide: getRepositoryToken(Product), useValue: {} },
+        { provide: getRepositoryToken(OrderContact), useValue: { find: jest.fn(), findOne: jest.fn(), create: jest.fn().mockImplementation((v: unknown) => v), save: jest.fn(), remove: jest.fn() } },
+        { provide: getRepositoryToken(Contact), useValue: { findOne: jest.fn() } },
         { provide: DataSource, useValue: mockDataSource },
         { provide: NotificationsService, useValue: { sendOrderEvent: jest.fn() } },
       ],

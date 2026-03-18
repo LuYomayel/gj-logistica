@@ -93,11 +93,6 @@ export function OrdersTable() {
   const formatDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("es-AR") : "-";
 
-  const formatAmount = (v: string | null) =>
-    v
-      ? `$${parseFloat(v).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
-      : "-";
-
   if (isLoading) {
     return <Skeleton height="400px" />;
   }
@@ -266,25 +261,6 @@ export function OrdersTable() {
             header="F. prevista"
             style={{ width: "100px" }}
             body={(row: Order) => formatDate(row.deliveryDate)}
-          />
-          <Column
-            field="totalHT"
-            header="Monto (neto)"
-            style={{ width: "120px", textAlign: "right" }}
-            bodyStyle={{ textAlign: "right" }}
-            body={(row: Order) => formatAmount(row.totalHT)}
-          />
-          <Column
-            field="nroSeguimiento"
-            header="Nro. seguimiento"
-            style={{ width: "140px" }}
-            body={(row: Order) => row.nroSeguimiento ?? "-"}
-          />
-          <Column
-            field="agencia"
-            header="Agencia"
-            style={{ width: "120px" }}
-            body={(row: Order) => row.agencia ?? "-"}
           />
           <Column
             field="status"

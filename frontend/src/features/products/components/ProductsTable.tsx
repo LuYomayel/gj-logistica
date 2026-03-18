@@ -217,12 +217,6 @@ export function ProductsTable() {
           <Column field="label" header="Etiqueta" />
           <Column field="barcode" header="Código de barras" style={{ width: '160px' }} />
           <Column
-            field="desiredStock"
-            header="Stock deseado"
-            style={{ width: '120px', textAlign: 'right' }}
-            bodyStyle={{ textAlign: 'right' }}
-          />
-          <Column
             field="stock"
             header="Stock físico"
             style={{ width: '100px', textAlign: 'right' }}

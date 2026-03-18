@@ -7,6 +7,8 @@ import { OrderSequence } from '../entities/order-sequence.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { Product } from '../entities/product.entity';
+import { OrderContact } from '../entities/order-contact.entity';
+import { Contact } from '../entities/contact.entity';
 import { CreateOrderDto, AddOrderLineDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { FilterOrderDto, OrderStatsDto } from './dto/filter-order.dto';
@@ -42,6 +44,8 @@ export class OrdersService {
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     @InjectRepository(OrderLine) private lineRepo: Repository<OrderLine>,
     @InjectRepository(ProductStock) private stockRepo: Repository<ProductStock>,
+    @InjectRepository(OrderContact) private orderContactRepo: Repository<OrderContact>,
+    @InjectRepository(Contact) private contactRepo: Repository<Contact>,
     private dataSource: DataSource,
     private notificationsService: NotificationsService,
   ) {}
@@ -549,5 +553,37 @@ export class OrdersService {
     const [row] = await qr.manager.query('SELECT LAST_INSERT_ID() AS seq');
 
     return `SO${yearMonth}-${String(row.seq).padStart(4, '0')}`;
+  }
+
+  // ── Order Contacts ────────────────────────────────────────
+
+  async getOrderContacts(orderId: number): Promise<OrderContact[]> {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException(`Pedido ${orderId} no encontrado`);
+    return this.orderContactRepo.find({
+      where: { orderId },
+      relations: ['contact'],
+      order: { id: 'ASC' },
+    });
+  }
+
+  async assignContact(orderId: number, contactId: number, role?: string): Promise<OrderContact> {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException(`Pedido ${orderId} no encontrado`);
+
+    const contact = await this.contactRepo.findOne({ where: { id: contactId } });
+    if (!contact) throw new NotFoundException(`Contacto ${contactId} no encontrado`);
+
+    const existing = await this.orderContactRepo.findOne({ where: { orderId, contactId } });
+    if (existing) throw new BadRequestException('Este contacto ya está asignado al pedido');
+
+    const oc = this.orderContactRepo.create({ orderId, contactId, role: role ?? null });
+    return this.orderContactRepo.save(oc);
+  }
+
+  async removeContact(orderId: number, contactId: number): Promise<void> {
+    const oc = await this.orderContactRepo.findOne({ where: { orderId, contactId } });
+    if (!oc) throw new NotFoundException('Asignación de contacto no encontrada');
+    await this.orderContactRepo.remove(oc);
   }
 }

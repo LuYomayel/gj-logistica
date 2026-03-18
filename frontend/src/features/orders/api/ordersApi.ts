@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/api/client';
-import type { Order, OrderStats, PaginatedResponse } from '../../../shared/types';
+import type { Order, OrderStats, OrderContact, PaginatedResponse } from '../../../shared/types';
 
 export interface OrderFilters {
   page?: number;
@@ -27,8 +27,6 @@ export interface CreateOrderPayload {
   privateNote?: string;
   orderDate?: string;
   deliveryDate?: string;
-  nroSeguimiento?: string;
-  agencia?: string;
 }
 
 export interface AddOrderLinePayload {
@@ -116,5 +114,17 @@ export const ordersApi = {
     a.download = `${ref}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
+  },
+  // ── Order Contacts ──
+  getContacts: async (orderId: number): Promise<OrderContact[]> => {
+    const { data } = await apiClient.get<OrderContact[]>(`/orders/${orderId}/contacts`);
+    return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.data as OrderContact[] ?? []);
+  },
+  assignContact: async (orderId: number, contactId: number, role?: string): Promise<OrderContact> => {
+    const { data } = await apiClient.post<OrderContact>(`/orders/${orderId}/contacts`, { contactId, role });
+    return data;
+  },
+  removeContact: async (orderId: number, contactId: number): Promise<void> => {
+    await apiClient.delete(`/orders/${orderId}/contacts/${contactId}`);
   },
 };

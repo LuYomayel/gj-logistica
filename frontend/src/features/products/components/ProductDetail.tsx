@@ -47,21 +47,13 @@ export function ProductDetail({ id }: Props) {
         ref: product.ref + '-CLON',
         label: product.label ?? undefined,
         description: product.description ?? undefined,
-        barcode: undefined, // Don't clone barcode (must be unique)
-        price: product.price ? parseFloat(product.price) : undefined,
-        vatRate: product.vatRate ? parseFloat(product.vatRate) : undefined,
-        isSellable: product.isSellable,
-        stockAlertThreshold: product.stockAlertThreshold,
-        desiredStock: product.desiredStock,
+        barcode: undefined,
         talle: product.talle ?? undefined,
         rubro: product.rubro ?? undefined,
         subrubro: product.subrubro ?? undefined,
         marca: product.marca ?? undefined,
         color: product.color ?? undefined,
         posicion: product.posicion ?? undefined,
-        nivelEconomico: product.nivelEconomico ?? undefined,
-        keywords: product.keywords ?? undefined,
-        eanInterno: undefined, // Don't clone EAN (should be unique)
       });
     },
     onSuccess: (cloned) => {
@@ -119,9 +111,6 @@ export function ProductDetail({ id }: Props) {
     );
   }
 
-  const formatPrice = (p: string | null) =>
-    p ? `$${parseFloat(p).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-';
-
   const isMutating = cloneMut.isPending || deleteMut.isPending;
 
   return (
@@ -157,10 +146,6 @@ export function ProductDetail({ id }: Props) {
             {product.barcode && (
               <Tag value={product.barcode} severity="secondary" icon="pi pi-barcode" />
             )}
-            <Tag
-              value={product.isSellable ? 'En venta' : 'No en venta'}
-              severity={product.isSellable ? 'success' : 'warning'}
-            />
           </div>
         </div>
 
@@ -230,31 +215,9 @@ export function ProductDetail({ id }: Props) {
                   {hasPermission('products.read_position') && (
                     <InfoRow label="Posición" value={product.posicion} />
                   )}
-                  <InfoRow label="Nivel Económico" value={product.nivelEconomico} />
-                  <InfoRow label="EAN Interno" value={product.eanInterno} />
-                  <InfoRow label="Keywords" value={product.keywords} />
                   <InfoRow
                     label="Creado"
                     value={new Date(product.createdAt).toLocaleDateString('es-AR')}
-                  />
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Tab: Precios de venta */}
-          <TabPanel header="Precios de venta">
-            <div className="p-2">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                    Precios
-                  </h3>
-                  <InfoRow label="Precio (Neto)" value={formatPrice(product.price)} />
-                  <InfoRow label="Precio (con IVA)" value={formatPrice(product.priceTTC)} />
-                  <InfoRow
-                    label="Tasa IVA"
-                    value={product.vatRate ? `${product.vatRate}%` : '-'}
                   />
                 </div>
               </div>
@@ -270,15 +233,6 @@ export function ProductDetail({ id }: Props) {
                     Stock actual
                   </h3>
                   <InfoRow label="Stock físico" value={product.stock} />
-                  <InfoRow label="Stock deseado" value={product.desiredStock} />
-                  <InfoRow label="Alerta de stock" value={product.stockAlertThreshold} />
-                  <div className="mt-4">
-                    {product.stock <= product.stockAlertThreshold ? (
-                      <Tag value="Stock bajo" severity="danger" icon="pi pi-exclamation-triangle" />
-                    ) : (
-                      <Tag value="Stock OK" severity="success" icon="pi pi-check" />
-                    )}
-                  </div>
                 </div>
               </div>
             </div>

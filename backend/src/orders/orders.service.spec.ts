@@ -9,6 +9,8 @@ import { OrderSequence } from '../entities/order-sequence.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { Product } from '../entities/product.entity';
+import { OrderContact } from '../entities/order-contact.entity';
+import { Contact } from '../entities/contact.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -132,6 +134,8 @@ describe('OrdersService', () => {
         { provide: getRepositoryToken(ProductStock), useValue: { findOne: jest.fn().mockResolvedValue({ quantity: 100 }) } },
         { provide: getRepositoryToken(StockMovement), useValue: {} },
         { provide: getRepositoryToken(Product), useValue: {} },
+        { provide: getRepositoryToken(OrderContact), useValue: { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), create: jest.fn().mockImplementation((v: unknown) => v), save: jest.fn().mockImplementation((v: unknown) => v), remove: jest.fn().mockResolvedValue({}) } },
+        { provide: getRepositoryToken(Contact), useValue: { findOne: jest.fn() } },
         { provide: DataSource, useValue: mockDataSource },
         {
           provide: NotificationsService,

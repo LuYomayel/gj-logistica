@@ -10,6 +10,7 @@ import { Toast } from 'primereact/toast';
 import { Dropdown } from 'primereact/dropdown';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { usersApi } from '../api/usersApi';
+import { tenantsApi } from '../../admin/api/tenantsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { User, UserType } from '../../../shared/types';
@@ -37,6 +38,14 @@ export function UsersTable() {
     queryKey: ['users', { page, limit }],
     queryFn: () => usersApi.list({ page, limit }),
   });
+
+  // Load tenants for org name mapping
+  const { data: tenants = [] } = useQuery({
+    queryKey: ['tenants'],
+    queryFn: tenantsApi.list,
+    enabled: isSuperAdmin,
+  });
+  const tenantMap = new Map(tenants.map((t) => [t.id, t.name]));
 
   const deactivateMutation = useMutation({
     mutationFn: (id: number) => usersApi.deactivate(id),
@@ -217,7 +226,10 @@ export function UsersTable() {
             header="Organización"
             style={{ width: '80px', textAlign: 'center' }}
             bodyStyle={{ textAlign: 'center' }}
-            body={(row: User) => <span className="text-xs text-gray-500">#{row.entity}</span>}
+            body={(row: User) => {
+              const name = tenantMap.get(row.entity);
+              return <span className="text-xs text-gray-500">{name ?? `#${row.entity}`}</span>;
+            }}
           />
           {hasPermission('users.write') && (
             <Column

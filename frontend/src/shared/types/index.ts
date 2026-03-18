@@ -71,7 +71,7 @@ export interface OrderLine {
   vatRate: string | null;
   discountPercent: number | null;
   position: number | null;
-  product?: { ref: string; label: string | null };
+  product?: { id: number; ref: string; label: string | null; posicion: string | null };
 }
 
 export interface Order {
@@ -117,6 +117,14 @@ export interface Contact {
   nombreFantasia: string | null;
   alias: string | null;
   thirdParty?: { id: number; name: string };
+}
+
+export interface OrderContact {
+  id: number;
+  orderId: number;
+  contactId: number;
+  role: string | null;
+  contact?: Contact;
 }
 
 export interface User {

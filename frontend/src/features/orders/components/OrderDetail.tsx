@@ -15,7 +15,10 @@ import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { EditOrderDialog } from './EditOrderDialog';
 import { StatusBadge } from '../../../shared/components/StatusBadge';
 import { useAuth } from '../../../shared/hooks/useAuth';
-import type { Order, OrderLine, Product } from '../../../shared/types';
+import { ProductInfoDialog } from './ProductInfoDialog';
+import { OrderContactsPanel } from './OrderContactsPanel';
+import { printContactCard } from './PrintContactCard';
+import type { Order, OrderLine, Product, OrderContact } from '../../../shared/types';
 
 interface InfoRowProps {
   label: string;
@@ -41,9 +44,16 @@ export function OrderDetail({ id }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useRef<Toast>(null);
-  const { hasPermission } = useAuth();
+  const { hasPermission, isSuperAdmin } = useAuth();
 
   const [showEdit, setShowEdit] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+
+  // Query contacts for print button
+  const { data: orderContacts = [] } = useQuery<OrderContact[]>({
+    queryKey: ['order-contacts', id],
+    queryFn: () => ordersApi.getContacts(id),
+  });
 
   // ── Agregar línea state ─────────────────────────────────────
   // productInput holds the typed string while searching, or the Product object when selected
@@ -192,9 +202,6 @@ export function OrderDetail({ id }: Props) {
   const formatDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString('es-AR') : '-';
 
-  const formatAmount = (v: string | null) =>
-    v ? `$${parseFloat(v).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-';
-
   const status = order.status;
   const isMutating =
     validateMut.isPending || closeMut.isPending || cancelMut.isPending || reopenMut.isPending;
@@ -204,6 +211,12 @@ export function OrderDetail({ id }: Props) {
   return (
     <>
       <Toast ref={toast} />
+
+      <ProductInfoDialog
+        productId={selectedProductId}
+        visible={selectedProductId !== null}
+        onHide={() => setSelectedProductId(null)}
+      />
 
       {order && isDraft && (
         <EditOrderDialog
@@ -315,6 +328,21 @@ export function OrderDetail({ id }: Props) {
                 tooltipOptions={{ position: 'bottom' }}
               />
             )}
+            {status >= 1 && isSuperAdmin && orderContacts.length > 0 && orderContacts[0].contact && (
+              <Button
+                label="Imprimir contacto"
+                icon="pi pi-print"
+                outlined
+                severity="secondary"
+                onClick={() => {
+                  const c = orderContacts[0].contact;
+                  if (c) printContactCard({ contact: c, orderRef: order.ref });
+                }}
+                className="px-4 py-2"
+                tooltip="Imprimir tarjeta de contacto para envío"
+                tooltipOptions={{ position: 'bottom' }}
+              />
+            )}
           </div>
         </div>
 
@@ -334,13 +362,8 @@ export function OrderDetail({ id }: Props) {
             </div>
             <div>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Totales y entrega
+                Detalles adicionales
               </h3>
-              <InfoRow label="Total Neto" value={formatAmount(order.totalHT)} />
-              <InfoRow label="IVA" value={formatAmount(order.totalTax)} />
-              <InfoRow label="Total con IVA" value={formatAmount(order.totalTTC)} />
-              <InfoRow label="Agencia" value={order.agencia} />
-              <InfoRow label="Nro. seguimiento" value={order.nroSeguimiento} />
               <InfoRow
                 label="Autor"
                 value={
@@ -362,6 +385,9 @@ export function OrderDetail({ id }: Props) {
             </div>
           )}
         </div>
+
+        {/* Contactos */}
+        <OrderContactsPanel orderId={id} isDraft={isDraft} canWrite={hasPermission('orders.write')} />
 
         {/* Lines */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
@@ -387,7 +413,17 @@ export function OrderDetail({ id }: Props) {
               field="product.ref"
               header="Ref"
               style={{ width: '120px', fontFamily: 'monospace' }}
-              body={(row: OrderLine) => row.product?.ref ?? '-'}
+              body={(row: OrderLine) => (
+                row.product ? (
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-mono text-sm bg-transparent border-none p-0"
+                    onClick={(e) => { e.stopPropagation(); setSelectedProductId(row.product!.id); }}
+                  >
+                    {row.product.ref}
+                  </button>
+                ) : '-'
+              )}
             />
             <Column
               header="Producto / Descripción"
@@ -401,29 +437,13 @@ export function OrderDetail({ id }: Props) {
               style={{ width: '80px', textAlign: 'right' }}
               bodyStyle={{ textAlign: 'right' }}
             />
-            <Column
-              field="unitPrice"
-              header="P.U. (neto)"
-              style={{ width: '120px', textAlign: 'right' }}
-              bodyStyle={{ textAlign: 'right' }}
-              body={(row: OrderLine) => formatAmount(row.unitPrice)}
-            />
-            <Column
-              field="discountPercent"
-              header="Desc.%"
-              style={{ width: '80px', textAlign: 'right' }}
-              bodyStyle={{ textAlign: 'right' }}
-              body={(row: OrderLine) =>
-                row.discountPercent ? `${row.discountPercent}%` : '-'
-              }
-            />
-            <Column
-              field="totalHT"
-              header="Total Neto"
-              style={{ width: '130px', textAlign: 'right' }}
-              bodyStyle={{ textAlign: 'right' }}
-              body={(row: OrderLine) => formatAmount(row.totalHT)}
-            />
+            {hasPermission('products.read_position') && (
+              <Column
+                header="Posición"
+                style={{ width: '100px' }}
+                body={(row: OrderLine) => row.product?.posicion ?? '-'}
+              />
+            )}
             {/* Remove button — only for drafts AND if user can write orders */}
             {isDraft && hasPermission('orders.write') && (
               <Column
@@ -444,22 +464,6 @@ export function OrderDetail({ id }: Props) {
               />
             )}
           </DataTable>
-
-          {/* Totals row */}
-          {lines.length > 0 && (
-            <div className="flex flex-wrap justify-end gap-3 sm:gap-6 px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm">
-              <span className="text-gray-500">
-                Neto: <strong className="text-gray-800">{formatAmount(order.totalHT)}</strong>
-              </span>
-              <span className="text-gray-500">
-                IVA: <strong className="text-gray-800">{formatAmount(order.totalTax)}</strong>
-              </span>
-              <span className="text-gray-500">
-                Total:{' '}
-                <strong className="text-[#1b3a5f] text-base">{formatAmount(order.totalTTC)}</strong>
-              </span>
-            </div>
-          )}
 
           {/* ── Agregar línea (only draft + orders.write) ── */}
           {isDraft && hasPermission('orders.write') && (

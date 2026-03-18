@@ -9,7 +9,6 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
-import ProductStatsPage from './pages/ProductStatsPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderStatsPage from './pages/OrderStatsPage';
@@ -55,7 +54,7 @@ export default function App() {
           {/* Products — requires products.read */}
           <Route element={<PermissionRoute permission="products.read" />}>
             <Route path="/products" element={<ProductsPage />} />
-            <Route path="/products/stats" element={<ProductStatsPage />} />
+
             <Route path="/products/:id" element={<ProductDetailPage />} />
           </Route>
 

@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, type CreateProductPayload } from '../api/productsApi';
@@ -19,24 +17,7 @@ interface Props {
   onSaved?: () => void;
 }
 
-const NIVEL_OPTIONS = [
-  { label: 'Económico', value: 'economico' },
-  { label: 'Premium', value: 'premium' },
-  { label: 'Estándar', value: 'estandar' },
-];
-
-const VENTA_OPTIONS = [
-  { label: 'Para vender', value: 1 },
-  { label: 'No para vender', value: 0 },
-];
-
-type FormValues = Omit<CreateProductPayload, 'price' | 'vatRate' | 'stockAlertThreshold' | 'desiredStock' | 'isSellable'> & {
-  price: number | null;
-  vatRate: number | null;
-  stockAlertThreshold: number | null;
-  desiredStock: number | null;
-  isSellable: number;
-};
+type FormValues = CreateProductPayload & { description: string };
 
 export function EditProductDialog({ visible, onHide, product, onSaved }: Props) {
   const queryClient = useQueryClient();
@@ -47,47 +28,30 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
     defaultValues: {
       ref: product.ref,
       label: product.label ?? '',
-      isSellable: product.isSellable,
       description: product.description ?? '',
       barcode: product.barcode ?? '',
-      price: product.price ? parseFloat(product.price) : null,
-      vatRate: product.vatRate ? parseFloat(product.vatRate) : null,
-      stockAlertThreshold: product.stockAlertThreshold,
-      desiredStock: product.desiredStock,
       posicion: product.posicion ?? '',
       color: product.color ?? '',
-      nivelEconomico: product.nivelEconomico ?? '',
       marca: product.marca ?? '',
       subrubro: product.subrubro ?? '',
       rubro: product.rubro ?? '',
       talle: product.talle ?? '',
-      keywords: product.keywords ?? '',
-      eanInterno: product.eanInterno ?? '',
     },
   });
 
-  // Reset form when dialog opens or product changes
   useEffect(() => {
     if (visible) {
       reset({
         ref: product.ref,
         label: product.label ?? '',
-        isSellable: product.isSellable,
         description: product.description ?? '',
         barcode: product.barcode ?? '',
-        price: product.price ? parseFloat(product.price) : null,
-        vatRate: product.vatRate ? parseFloat(product.vatRate) : null,
-        stockAlertThreshold: product.stockAlertThreshold,
-        desiredStock: product.desiredStock,
         posicion: product.posicion ?? '',
         color: product.color ?? '',
-        nivelEconomico: product.nivelEconomico ?? '',
         marca: product.marca ?? '',
         subrubro: product.subrubro ?? '',
         rubro: product.rubro ?? '',
         talle: product.talle ?? '',
-        keywords: product.keywords ?? '',
-        eanInterno: product.eanInterno ?? '',
       });
       setErrorMsg('');
     }
@@ -98,22 +62,14 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
       const payload: Partial<CreateProductPayload> = {
         ref: values.ref,
         label: values.label || undefined,
-        isSellable: values.isSellable,
         description: values.description || undefined,
         barcode: values.barcode || undefined,
-        price: values.price ?? undefined,
-        vatRate: values.vatRate ?? undefined,
-        stockAlertThreshold: values.stockAlertThreshold ?? undefined,
-        desiredStock: values.desiredStock ?? undefined,
         posicion: values.posicion || undefined,
         color: values.color || undefined,
-        nivelEconomico: values.nivelEconomico || undefined,
         marca: values.marca || undefined,
         subrubro: values.subrubro || undefined,
         rubro: values.rubro || undefined,
         talle: values.talle || undefined,
-        keywords: values.keywords || undefined,
-        eanInterno: values.eanInterno || undefined,
       };
       return productsApi.update(product.id, payload);
     },
@@ -146,7 +102,7 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
         {/* Datos básicos */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos básicos</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">
                 Ref <span className="text-red-400">*</span>
@@ -159,19 +115,8 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
               {errors.ref && <small className="text-red-500">{errors.ref.message}</small>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Estado (Venta)</label>
-              <Controller
-                name="isSellable"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    value={field.value}
-                    options={VENTA_OPTIONS}
-                    onChange={(e) => field.onChange(e.value)}
-                    className="w-full"
-                  />
-                )}
-              />
+              <label className="text-sm font-medium text-gray-700">Código de barras</label>
+              <InputText {...register('barcode')} placeholder="EAN, UPC..." className="w-full" />
             </div>
             <div className="col-span-2 flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Etiqueta</label>
@@ -180,94 +125,10 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
           </div>
         </div>
 
-        {/* Precio y código */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Precio y código</p>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Código de barras</label>
-              <InputText {...register('barcode')} placeholder="EAN, UPC..." className="w-full" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Precio neto ($)</label>
-              <Controller
-                name="price"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value ?? null)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={8}
-                    placeholder="0.00"
-                    inputClassName="w-full"
-                  />
-                )}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">IVA (%)</label>
-              <Controller
-                name="vatRate"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value ?? null)}
-                    mode="decimal"
-                    minFractionDigits={0}
-                    maxFractionDigits={2}
-                    placeholder="21"
-                    inputClassName="w-full"
-                  />
-                )}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Stock */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Stock</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Stock límite para alertas</label>
-              <Controller
-                name="stockAlertThreshold"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value ?? null)}
-                    placeholder="0"
-                    inputClassName="w-full"
-                  />
-                )}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Stock deseado</label>
-              <Controller
-                name="desiredStock"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value ?? null)}
-                    placeholder="0"
-                    inputClassName="w-full"
-                  />
-                )}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Clasificación */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Clasificación</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Rubro</label>
               <InputText {...register('rubro')} placeholder="Rubro..." className="w-full" />
@@ -294,31 +155,6 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
                 <InputText {...register('posicion')} placeholder="Ej: A1-B2" className="w-full" />
               </div>
             )}
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Nivel económico</label>
-              <Controller
-                name="nivelEconomico"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    value={field.value}
-                    options={NIVEL_OPTIONS}
-                    onChange={(e) => field.onChange(e.value)}
-                    placeholder="Seleccionar..."
-                    showClear
-                    className="w-full"
-                  />
-                )}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">EAN Interno</label>
-              <InputText {...register('eanInterno')} placeholder="EAN interno..." className="w-full" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Keywords</label>
-              <InputText {...register('keywords')} placeholder="Palabras clave..." className="w-full" />
-            </div>
           </div>
         </div>
 

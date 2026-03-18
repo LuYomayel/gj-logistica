@@ -24,8 +24,6 @@ type FormValues = {
   orderDate: Date | null;
   deliveryDate: Date | null;
   warehouseId: number | null;
-  nroSeguimiento: string;
-  agencia: string;
   publicNote: string;
 };
 
@@ -53,8 +51,6 @@ export function EditOrderDialog({ visible, onHide, order, onSaved }: Props) {
       orderDate: parseDate(order.orderDate),
       deliveryDate: parseDate(order.deliveryDate),
       warehouseId: (order as Order & { warehouseId?: number }).warehouseId ?? null,
-      nroSeguimiento: order.nroSeguimiento ?? '',
-      agencia: order.agencia ?? '',
       publicNote: order.publicNote ?? '',
     },
   });
@@ -66,8 +62,6 @@ export function EditOrderDialog({ visible, onHide, order, onSaved }: Props) {
         orderDate: parseDate(order.orderDate),
         deliveryDate: parseDate(order.deliveryDate),
         warehouseId: (order as Order & { warehouseId?: number }).warehouseId ?? null,
-        nroSeguimiento: order.nroSeguimiento ?? '',
-        agencia: order.agencia ?? '',
         publicNote: order.publicNote ?? '',
       });
       setErrorMsg('');
@@ -81,8 +75,6 @@ export function EditOrderDialog({ visible, onHide, order, onSaved }: Props) {
         orderDate: values.orderDate ? values.orderDate.toISOString().split('T')[0] : undefined,
         deliveryDate: values.deliveryDate ? values.deliveryDate.toISOString().split('T')[0] : undefined,
         warehouseId: values.warehouseId ?? undefined,
-        nroSeguimiento: values.nroSeguimiento || undefined,
-        agencia: values.agencia || undefined,
         publicNote: values.publicNote || undefined,
       };
       return ordersApi.update(order.id, payload);
@@ -182,29 +174,6 @@ export function EditOrderDialog({ visible, onHide, order, onSaved }: Props) {
                     className="w-full"
                   />
                 )}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Entrega */}
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Entrega</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Nro. seguimiento</label>
-              <InputText
-                {...register('nroSeguimiento')}
-                placeholder="Nro. seguimiento"
-                className="w-full"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Agencia</label>
-              <InputText
-                {...register('agencia')}
-                placeholder="Agencia de envío"
-                className="w-full"
               />
             </div>
           </div>

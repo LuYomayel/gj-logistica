@@ -21,20 +21,12 @@ export interface CreateProductPayload {
   label?: string;
   description?: string;
   barcode?: string;
-  price?: number;
-  vatRate?: number;
-  isSellable?: number;
-  stockAlertThreshold?: number;
-  desiredStock?: number;
   talle?: string;
   rubro?: string;
   subrubro?: string;
   marca?: string;
   color?: string;
   posicion?: string;
-  nivelEconomico?: string;
-  keywords?: string;
-  eanInterno?: string;
 }
 
 export const productsApi = {

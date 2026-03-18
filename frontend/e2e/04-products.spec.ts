@@ -18,10 +18,14 @@ test.describe('Products Module', () => {
     });
 
     test('shows DataTable with expected columns', async ({ page }) => {
-      const headers = ['Ref', 'Etiqueta', 'Código de barras', 'Stock deseado', 'Stock físico', 'Posicion', 'Color'];
+      const headers = ['Ref', 'Etiqueta', 'Código de barras', 'Stock físico', 'Color'];
       for (const header of headers) {
         await expect(page.locator('th').filter({ hasText: header }).first()).toBeVisible();
       }
+    });
+
+    test('super_admin sees Posición column (products.read_position)', async ({ page }) => {
+      await expect(page.locator('th').filter({ hasText: 'Posición' }).first()).toBeVisible();
     });
 
     test('shows Nuevo Producto button (products.write)', async ({ page }) => {
@@ -118,20 +122,22 @@ test.describe('Products Module', () => {
       await expect(page.getByRole('tab', { name: 'Producto' })).toBeVisible();
     });
 
-    test('shows Precios de venta tab', async ({ page }) => {
-      const tab = page.getByRole('tab', { name: /Precios/i });
-      await expect(tab).toBeVisible();
-      await tab.click();
-      // Should show price info
-      await expect(page.getByText(/Neto|IVA/i).first()).toBeVisible();
+    test('does NOT show Precios de venta tab (hidden)', async ({ page }) => {
+      await expect(page.getByRole('tab', { name: /Precios/i })).not.toBeVisible();
     });
 
-    test('shows Stock tab', async ({ page }) => {
+    test('shows Stock tab with stock físico only', async ({ page }) => {
       const tab = page.getByRole('tab', { name: 'Stock' });
       await expect(tab).toBeVisible();
       await tab.click();
-      // Should show stock info
       await expect(page.getByText(/Stock f[ií]sico/i).first()).toBeVisible();
+      // Should NOT show stock deseado or alerta
+      await expect(page.getByText('Stock deseado')).not.toBeVisible();
+      await expect(page.getByText('Alerta de stock')).not.toBeVisible();
+    });
+
+    test('super_admin sees Posición field in product detail', async ({ page }) => {
+      await expect(page.getByText('Posición').first()).toBeVisible();
     });
 
     test('shows Notas tab', async ({ page }) => {
@@ -169,8 +175,10 @@ test.describe('Products Module', () => {
 
       // Basic data section
       await expect(page.getByText('Datos básicos').first()).toBeVisible();
-      // Price section
-      await expect(page.getByText('Precio y código').first()).toBeVisible();
+      // Classification section
+      await expect(page.getByText('Clasificación').first()).toBeVisible();
+      // Price section should NOT be visible (hidden)
+      await expect(page.getByText('Precio y código')).not.toBeVisible();
     });
 
     test('ref field is required', async ({ page }) => {
@@ -215,33 +223,6 @@ test.describe('Products Module', () => {
     });
   });
 
-  // ── Product Stats ─────────────────────────────────────────────────────────
-
-  test.describe('ProductStats', () => {
-    test.beforeEach(async ({ page }) => {
-      await loginViaAPI(page, USERS.superAdmin);
-      await page.goto('/products/stats');
-      await page.waitForLoadState('networkidle');
-    });
-
-    test('stats page renders heading', async ({ page }) => {
-      await expect(page.getByText(/estad[ií]sticas.*productos/i).first()).toBeVisible({ timeout: 10_000 });
-    });
-
-    test('shows popularity table', async ({ page }) => {
-      await expect(page.getByText(/top productos|popularidad/i).first()).toBeVisible({ timeout: 10_000 });
-    });
-
-    test('shows rubro breakdown', async ({ page }) => {
-      await expect(page.getByText(/por rubro/i).first()).toBeVisible({ timeout: 10_000 });
-    });
-
-    test('has filter controls', async ({ page }) => {
-      await expect(page.getByRole('button', { name: 'Aplicar' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Limpiar' })).toBeVisible();
-    });
-  });
-
   // ── Permission checks ─────────────────────────────────────────────────────
 
   test.describe('Products — permission checks', () => {
@@ -257,6 +238,61 @@ test.describe('Products Module', () => {
       await page.goto('/products');
       await page.waitForLoadState('networkidle');
       await expect(page.getByRole('button', { name: 'Nuevo Producto' })).toBeVisible();
+    });
+
+    test('client_admin does NOT see Posición column (no products.read_position)', async ({ page }) => {
+      await loginViaAPI(page, USERS.clientAdmin);
+      await page.goto('/products');
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('th').filter({ hasText: 'Posición' })).not.toBeVisible();
+    });
+  });
+
+  // ── Position permission in CreateProductDialog ────────────────────────────
+
+  test.describe('Products — position field in dialogs', () => {
+    test('super_admin sees Posición field in create dialog', async ({ page }) => {
+      await loginViaAPI(page, USERS.superAdmin);
+      await page.goto('/products');
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('button', { name: 'Nuevo Producto' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByLabel('Posición')).toBeVisible();
+    });
+
+    test('client_admin does NOT see Posición field in create dialog', async ({ page }) => {
+      await loginViaAPI(page, USERS.clientAdmin);
+      await page.goto('/products');
+      await page.waitForLoadState('networkidle');
+      await page.getByRole('button', { name: 'Nuevo Producto' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByLabel('Posición')).not.toBeVisible();
+    });
+
+    test('super_admin sees Posición field in edit dialog', async ({ page }) => {
+      await loginViaAPI(page, USERS.superAdmin);
+      await page.goto('/products');
+      await page.waitForLoadState('networkidle');
+      const firstRow = page.locator('table tbody tr').first();
+      await firstRow.waitFor({ state: 'visible', timeout: 10_000 });
+      await firstRow.click();
+      await expect(page).toHaveURL(/\/products\/\d+/);
+      await page.getByRole('button', { name: 'Modificar' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByLabel('Posición')).toBeVisible();
+    });
+
+    test('client_admin does NOT see Posición field in edit dialog', async ({ page }) => {
+      await loginViaAPI(page, USERS.clientAdmin);
+      await page.goto('/products');
+      await page.waitForLoadState('networkidle');
+      const firstRow = page.locator('table tbody tr').first();
+      await firstRow.waitFor({ state: 'visible', timeout: 10_000 });
+      await firstRow.click();
+      await expect(page).toHaveURL(/\/products\/\d+/);
+      await page.getByRole('button', { name: 'Modificar' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByLabel('Posición')).not.toBeVisible();
     });
   });
 });

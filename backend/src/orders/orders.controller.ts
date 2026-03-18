@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Query,
+  Controller, Get, Post, Patch, Delete, Body, Query,
   Param, ParseIntPipe, HttpCode, HttpStatus, Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -7,6 +7,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, AddOrderLineDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { AssignOrderContactDto } from './dto/assign-order-contact.dto';
 import { FilterOrderDto, OrderStatsDto } from './dto/filter-order.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequiresPermission } from '../common/decorators/requires-permission.decorator';
@@ -176,5 +177,35 @@ export class OrdersController {
   @HttpCode(HttpStatus.OK)
   reopenOrder(@Param('id', ParseIntPipe) id: number) {
     return this.service.reopenOrder(id);
+  }
+
+  // ── Order Contacts ────────────────────────────────────────
+
+  @Get(':id/contacts')
+  @RequiresPermission('orders.read')
+  @ApiOperation({ summary: 'Listar contactos asignados al pedido' })
+  getContacts(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getOrderContacts(id);
+  }
+
+  @Post(':id/contacts')
+  @RequiresPermission('orders.write')
+  @ApiOperation({ summary: 'Asignar contacto al pedido' })
+  assignContact(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AssignOrderContactDto,
+  ) {
+    return this.service.assignContact(id, dto.contactId, dto.role);
+  }
+
+  @Delete(':id/contacts/:contactId')
+  @RequiresPermission('orders.write')
+  @ApiOperation({ summary: 'Quitar contacto del pedido' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeContact(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('contactId', ParseIntPipe) contactId: number,
+  ) {
+    return this.service.removeContact(id, contactId);
   }
 }

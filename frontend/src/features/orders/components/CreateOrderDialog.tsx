@@ -12,6 +12,7 @@ import { Toast } from "primereact/toast";
 import { ordersApi, type CreateOrderPayload } from "../api/ordersApi";
 import { thirdPartiesApi } from "../../third-parties/api/thirdPartiesApi";
 import { warehousesApi } from "../../warehouses/api/warehousesApi";
+import { contactsApi } from "../../contacts/api/contactsApi";
 import { apiErrMsg } from "../../../shared/utils/apiErrMsg";
 
 interface Props {
@@ -25,8 +26,7 @@ interface FormValues {
   clientRef: string;
   orderDate: Date | null;
   deliveryDate: Date | null;
-  nroSeguimiento: string;
-  agencia: string;
+  contactId: number | null;
   publicNote: string;
 }
 
@@ -46,8 +46,7 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
       clientRef: "",
       orderDate: new Date(),
       deliveryDate: null,
-      nroSeguimiento: "",
-      agencia: "",
+      contactId: null,
       publicNote: "",
     },
   });
@@ -61,8 +60,7 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
         clientRef: "",
         orderDate: new Date(),
         deliveryDate: null,
-        nroSeguimiento: "",
-        agencia: "",
+        contactId: null,
         publicNote: "",
       });
     }
@@ -82,6 +80,21 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
     enabled: visible,
   });
 
+  // Load contacts
+  const { data: contactsData } = useQuery({
+    queryKey: ["contacts", "all"],
+    queryFn: () => contactsApi.list({ limit: 200 }),
+    enabled: visible,
+  });
+
+  const contactOptions = [
+    { label: "— Sin contacto —", value: null },
+    ...(contactsData?.data ?? []).map((c) => ({
+      label: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || c.alias || `#${c.id}`,
+      value: c.id,
+    })),
+  ];
+
   const thirdPartyOptions = (tpData?.data ?? []).map((tp) => ({
     label: tp.name,
     value: tp.id,
@@ -95,9 +108,21 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
     })),
   ];
 
+  // Track selected contactId for post-creation assignment
+  const pendingContactId = useRef<number | null>(null);
+
   const createMut = useMutation({
     mutationFn: (payload: CreateOrderPayload) => ordersApi.create(payload),
-    onSuccess: (order) => {
+    onSuccess: async (order) => {
+      // Assign contact if one was selected
+      if (pendingContactId.current) {
+        try {
+          await ordersApi.assignContact(order.id, pendingContactId.current);
+        } catch {
+          // Non-blocking: order created, contact assignment failed silently
+        }
+        pendingContactId.current = null;
+      }
       toast.current?.show({
         severity: "success",
         summary: "Pedido creado",
@@ -120,6 +145,8 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
   const onSubmit = (values: FormValues) => {
     if (!values.thirdPartyId) return;
 
+    pendingContactId.current = values.contactId;
+
     const payload: CreateOrderPayload = {
       thirdPartyId: values.thirdPartyId,
       warehouseId: values.warehouseId ?? undefined,
@@ -128,8 +155,6 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
       deliveryDate: values.deliveryDate
         ? values.deliveryDate.toISOString()
         : undefined,
-      nroSeguimiento: values.nroSeguimiento || undefined,
-      agencia: values.agencia || undefined,
       publicNote: values.publicNote || undefined,
     };
 
@@ -277,40 +302,23 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
             />
           </div>
 
-          {/* Nro seguimiento + Agencia */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">
-                Nro. seguimiento
-              </label>
-              <Controller
-                name="nroSeguimiento"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    {...field}
-                    placeholder="Ej: 12345"
-                    className="w-full text-sm"
-                  />
-                )}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">
-                Agencia
-              </label>
-              <Controller
-                name="agencia"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    {...field}
-                    placeholder="Ej: OCA"
-                    className="w-full text-sm"
-                  />
-                )}
-              />
-            </div>
+          {/* Contacto */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Contacto</label>
+            <Controller
+              name="contactId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  {...field}
+                  options={contactOptions}
+                  filter
+                  filterPlaceholder="Buscar contacto..."
+                  placeholder="Sin contacto"
+                  className="w-full text-sm"
+                />
+              )}
+            />
           </div>
 
           {/* Nota pública */}

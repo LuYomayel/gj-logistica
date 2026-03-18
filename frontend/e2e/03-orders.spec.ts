@@ -18,7 +18,7 @@ test.describe('Orders Module', () => {
     });
 
     test('shows DataTable with expected columns', async ({ page }) => {
-      const headers = ['Ref', 'Ref cliente', 'Tercero', 'Fecha', 'F. prevista', 'Monto (neto)', 'Nro. seguimiento', 'Agencia', 'Estado', 'Autor'];
+      const headers = ['Ref', 'Ref cliente', 'Tercero', 'Fecha', 'F. prevista', 'Estado', 'Autor'];
       for (const header of headers) {
         await expect(page.locator('th').filter({ hasText: header }).first()).toBeVisible();
       }
@@ -139,7 +139,7 @@ test.describe('Orders Module', () => {
       await expect(page).toHaveURL(/\/orders\/\d+/);
 
       // Check info row labels
-      const infoLabels = ['Referencia', 'Tercero', 'Fecha pedido', 'Total Neto', 'IVA', 'Total con IVA'];
+      const infoLabels = ['Referencia', 'Tercero', 'Fecha pedido', 'Autor'];
       for (const label of infoLabels) {
         await expect(page.getByText(label).first()).toBeVisible();
       }
