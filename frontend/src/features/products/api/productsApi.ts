@@ -77,9 +77,9 @@ export const productsApi = {
   ): Promise<{ id: number; productId: number; filename: string; mimeType: string; sizeBytes: number; width: number | null; height: number | null; updatedAt: string }> => {
     const form = new FormData();
     form.append('file', file);
-    const { data } = await apiClient.post(`/products/${productId}/image`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Do NOT set Content-Type manually — axios will auto-set it with the
+    // correct `multipart/form-data; boundary=...` from the FormData body.
+    const { data } = await apiClient.post(`/products/${productId}/image`, form);
     return data as unknown as {
       id: number; productId: number; filename: string; mimeType: string;
       sizeBytes: number; width: number | null; height: number | null; updatedAt: string;
@@ -96,7 +96,6 @@ export const productsApi = {
     const { data } = await apiClient.post<{ created: number; updated: number; errors: string[] }>(
       '/products/import',
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data as unknown as { created: number; updated: number; errors: string[] };
   },

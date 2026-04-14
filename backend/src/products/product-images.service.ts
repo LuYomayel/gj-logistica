@@ -64,10 +64,17 @@ export class ProductImagesService {
     // Tenant scoping + existence
     await this.productsService.findOne(productId, ctx);
 
+    if (!buffer || buffer.length === 0) {
+      throw new BadRequestException('El archivo está vacío o no llegó al servidor');
+    }
+
     // Magic-byte validation (don't trust the client MIME)
     const format = detectImageFormat(buffer);
     if (!format) {
-      throw new BadRequestException('El archivo no es una imagen válida (JPEG/PNG/WebP/GIF)');
+      const head = buffer.slice(0, 12).toString('hex');
+      throw new BadRequestException(
+        `El archivo no es una imagen válida (JPEG/PNG/WebP/GIF). Tamaño: ${buffer.length} bytes. Primeros bytes: ${head}`,
+      );
     }
 
     const dir = this.dirFor(productId);
