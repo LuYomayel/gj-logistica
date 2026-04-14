@@ -143,6 +143,32 @@ async function main(): Promise<void> {
   const pool: Pool = mysql.createPool(DB_CONFIG);
 
   try {
+    // ── Step 0: Tenant Sistema (entity=0, for super_admin users) ───────────
+    log('Step 0/3 — Ensuring tenant Sistema (id=0)...');
+    // id=0 is ignored by MySQL AUTO_INCREMENT unless NO_AUTO_VALUE_ON_ZERO is set.
+    // Use a single dedicated connection (not pool) so SET SESSION persists for the INSERT.
+    const singleConn = await mysql.createConnection(DB_CONFIG);
+    try {
+      await singleConn.execute(`SET SESSION sql_mode = CONCAT(@@sql_mode, ',NO_AUTO_VALUE_ON_ZERO')`);
+      await singleConn.execute(
+        `INSERT IGNORE INTO \`tenants\` (\`id\`, \`name\`, \`code\`, \`isActive\`)
+         VALUES (0, 'Sistema', 'SISTEMA', 1)`,
+      );
+    } finally {
+      await singleConn.end();
+    }
+    const [[sistemaRow]] = await pool.execute(
+      `SELECT id, name, code FROM \`tenants\` WHERE id = 0`,
+    ) as unknown[][];
+
+    if (sistemaRow) {
+      const t = sistemaRow as { id: number; name: string; code: string };
+      log(`  ✅ Tenant Sistema OK — id=${t.id}, name="${t.name}", code="${t.code}"`);
+    } else {
+      log('  ❌ Tenant Sistema NOT found after insert. Check if migrations have been run.');
+      process.exit(1);
+    }
+
     // ── Step 1: Tenant Corteva ──────────────────────────────────────────────
     log('Step 1/3 — Ensuring tenant Corteva (id=1)...');
     await pool.execute(
@@ -203,7 +229,7 @@ async function main(): Promise<void> {
         `INSERT INTO \`users\`
            (\`username\`, \`passwordHash\`, \`firstName\`, \`lastName\`,
             \`isAdmin\`, \`userType\`, \`status\`, \`entity\`, \`language\`)
-         VALUES (?, ?, 'Admin', 'GJ', 1, 'super_admin', 1, 1, 'es_AR')`,
+         VALUES (?, ?, 'Admin', 'GJ', 1, 'super_admin', 1, 0, 'es_AR')`,
         [ADMIN_USERNAME, passwordHash],
       );
       log(`  ✅ Created super_admin user "${ADMIN_USERNAME}"`);

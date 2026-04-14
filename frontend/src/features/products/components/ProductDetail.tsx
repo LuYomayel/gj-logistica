@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
 import { Tag } from 'primereact/tag';
+import { Toast } from 'primereact/toast';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { productsApi } from '../api/productsApi';
 import { EditProductDialog } from './EditProductDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { canManageTenants } from '../../../shared/hooks/useTenants';
+import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { Product } from '../../../shared/types';
 
 interface InfoRowProps {
@@ -32,7 +35,9 @@ interface Props {
 export function ProductDetail({ id }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const showTenant = canManageTenants(user?.userType);
+  const toast = useRef<Toast>(null);
   const [showEdit, setShowEdit] = useState(false);
 
   const { data: product, isLoading } = useQuery<Product>({
@@ -58,7 +63,11 @@ export function ProductDetail({ id }: Props) {
     },
     onSuccess: (cloned) => {
       void queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.current?.show({ severity: 'success', summary: 'Producto clonado', detail: `Se creó "${cloned.ref}"`, life: 3000 });
       navigate(`/products/${cloned.id}`);
+    },
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo clonar el producto'), life: 4000 });
     },
   });
 
@@ -66,7 +75,11 @@ export function ProductDetail({ id }: Props) {
     mutationFn: () => productsApi.remove(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.current?.show({ severity: 'success', summary: 'Producto eliminado', life: 3000 });
       navigate('/products');
+    },
+    onError: (err) => {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: apiErrMsg(err, 'No se pudo eliminar el producto'), life: 4000 });
     },
   });
 
@@ -115,6 +128,7 @@ export function ProductDetail({ id }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      <Toast ref={toast} />
       <ConfirmDialog />
 
       {showEdit && (
@@ -124,6 +138,7 @@ export function ProductDetail({ id }: Props) {
           product={product}
           onSaved={() => {
             void queryClient.invalidateQueries({ queryKey: ['products', id] });
+            toast.current?.show({ severity: 'success', summary: 'Cambios guardados', detail: `"${product.ref}" actualizado`, life: 3000 });
           }}
         />
       )}
@@ -199,6 +214,9 @@ export function ProductDetail({ id }: Props) {
                     Información general
                   </h3>
                   <InfoRow label="Referencia" value={product.ref} />
+                  {showTenant && (
+                    <InfoRow label="Organización" value={product.tenant?.name ?? `#${product.entity}`} />
+                  )}
                   <InfoRow label="Etiqueta" value={product.label} />
                   <InfoRow label="Descripción" value={product.description} />
                   <InfoRow label="Código de barras" value={product.barcode} />

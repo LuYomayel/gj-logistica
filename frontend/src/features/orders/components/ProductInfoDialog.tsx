@@ -4,6 +4,7 @@ import { Tag } from 'primereact/tag';
 import { useQuery } from '@tanstack/react-query';
 import { productsApi } from '../../products/api/productsApi';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Product } from '../../../shared/types';
 
 interface Props {
@@ -23,7 +24,8 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
 }
 
 export function ProductInfoDialog({ productId, visible, onHide }: Props) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const showTenant = canManageTenants(user?.userType);
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['products', productId],
@@ -64,6 +66,9 @@ export function ProductInfoDialog({ productId, visible, onHide }: Props) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Datos</p>
             {product.description && (
               <p className="text-sm text-gray-600 mb-2 bg-gray-50 rounded px-3 py-2">{product.description}</p>
+            )}
+            {showTenant && (
+              <InfoRow label="Organización" value={product.tenant?.name ?? `#${product.entity}`} />
             )}
             <InfoRow label="Código de barras" value={product.barcode} />
             <InfoRow label="Stock actual" value={product.stock} />
