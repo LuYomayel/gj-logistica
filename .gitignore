@@ -55,3 +55,9 @@ coverage/
 ecosystem.config.js.log
 
 *.md
+# Playwright MCP snapshots
+.playwright-mcp/
+
+# Local docs
+*.docx
+*.pdf
