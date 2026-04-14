@@ -72,7 +72,8 @@ export class ProductsService {
     const { search, rubro, subrubro, marca, talle, color, lowStock, tenantId: filterTenantId, page = 1, limit = 50 } = filter;
 
     const qb = this.repo.createQueryBuilder('p')
-      .leftJoinAndSelect('p.tenant', 'tenant');
+      .leftJoinAndSelect('p.tenant', 'tenant')
+      .andWhere('p.status = 1');
 
     if (search) {
       qb.andWhere(
