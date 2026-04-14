@@ -102,6 +102,25 @@ describe('ProductImagesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('accepts AVIF (ISO-BMFF with `ftypavif` brand)', async () => {
+      // 4 bytes size + "ftypavif" + padding — real AVIF shape, enough for magic-byte check.
+      // sharp may or may not fully decode this tiny stub; that's OK — we only assert
+      // the magic-byte validator no longer rejects it.
+      const avifHead = Buffer.concat([
+        Buffer.from([0x00, 0x00, 0x00, 0x1c]),
+        Buffer.from('ftypavif', 'ascii'),
+        Buffer.alloc(16),
+      ]);
+      // Spy on sharp to bypass actual decoding
+      imageRepo.findOne.mockResolvedValue({ id: 1, productId: 42, filename: 'image.webp', mimeType: 'image/webp', sizeBytes: 100 });
+      try {
+        await service.upload(42, avifHead, 'image/avif', superAdmin);
+      } catch (err) {
+        // sharp will likely fail on this stub — ensure it's NOT a magic-byte rejection
+        expect((err as Error).message).not.toMatch(/no es una imagen válida/);
+      }
+    });
+
     it('replaces existing image (UPSERT): same productId, returns updated row', async () => {
       const existing = { id: 7, productId: 42, filename: 'image.webp', mimeType: 'image/webp', sizeBytes: 100 };
       imageRepo.findOne.mockResolvedValue(existing);

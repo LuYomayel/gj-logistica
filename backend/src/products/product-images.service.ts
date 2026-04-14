@@ -20,7 +20,16 @@ const MAGIC = {
   png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
   webp: [0x52, 0x49, 0x46, 0x46], // "RIFF" — followed by size + "WEBP"
   gif: [0x47, 0x49, 0x46, 0x38],
+  bmp: [0x42, 0x4d], // "BM"
 };
+
+// ISO-BMFF image brands (bytes at offset 8-11 after `ftyp` at offset 4-7).
+// Covers AVIF (modern browsers + Safari) and HEIC/HEIF (iPhone default).
+const ISOBMFF_IMAGE_BRANDS = new Set([
+  'avif', 'avis',
+  'heic', 'heix', 'heim', 'heis',
+  'mif1', 'msf1',
+]);
 
 function matchesMagic(buf: Buffer, sig: number[]): boolean {
   if (buf.length < sig.length) return false;
@@ -28,11 +37,21 @@ function matchesMagic(buf: Buffer, sig: number[]): boolean {
   return true;
 }
 
-function detectImageFormat(buf: Buffer): 'jpeg' | 'png' | 'webp' | 'gif' | null {
+type DetectedFormat = 'jpeg' | 'png' | 'webp' | 'gif' | 'bmp' | 'avif' | 'heic';
+
+function detectImageFormat(buf: Buffer): DetectedFormat | null {
   if (matchesMagic(buf, MAGIC.jpeg)) return 'jpeg';
   if (matchesMagic(buf, MAGIC.png)) return 'png';
   if (matchesMagic(buf, MAGIC.gif)) return 'gif';
+  if (matchesMagic(buf, MAGIC.bmp)) return 'bmp';
   if (matchesMagic(buf, MAGIC.webp) && buf.slice(8, 12).toString('ascii') === 'WEBP') return 'webp';
+  // ISO-BMFF: `ftyp` at offset 4, brand at offset 8
+  if (buf.length >= 12 && buf.slice(4, 8).toString('ascii') === 'ftyp') {
+    const brand = buf.slice(8, 12).toString('ascii');
+    if (ISOBMFF_IMAGE_BRANDS.has(brand)) {
+      return brand.startsWith('avi') ? 'avif' : 'heic';
+    }
+  }
   return null;
 }
 
@@ -73,7 +92,7 @@ export class ProductImagesService {
     if (!format) {
       const head = buffer.slice(0, 12).toString('hex');
       throw new BadRequestException(
-        `El archivo no es una imagen válida (JPEG/PNG/WebP/GIF). Tamaño: ${buffer.length} bytes. Primeros bytes: ${head}`,
+        `El archivo no es una imagen válida (JPEG/PNG/WebP/GIF/AVIF/HEIC/BMP). Tamaño: ${buffer.length} bytes. Primeros bytes: ${head}`,
       );
     }
 

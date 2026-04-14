@@ -119,7 +119,7 @@ export function ProductImageTab({ productId }: Props) {
             Subir / reemplazar imagen
           </h3>
           <p className="text-xs text-gray-500 mb-2">
-            Formatos aceptados: JPG, PNG, WebP, GIF. Máximo 10 MB. Se convertirá automáticamente a WebP.
+            Formatos aceptados: JPG, PNG, WebP, GIF, AVIF, HEIC, BMP. Máximo 10 MB. Se convertirá automáticamente a WebP.
           </p>
           <FileUpload
             ref={fileUpload}
