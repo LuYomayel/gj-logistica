@@ -2,7 +2,10 @@ import axios from 'axios';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
-  headers: { 'Content-Type': 'application/json' },
+  // Don't set a default Content-Type — axios auto-picks:
+  //   - application/json for plain objects
+  //   - multipart/form-data (with correct boundary) for FormData
+  // Setting it here globally breaks FormData uploads.
 });
 
 apiClient.interceptors.request.use((config) => {
