@@ -10,6 +10,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { Dropdown } from 'primereact/dropdown';
 import { productsApi, type ProductFilters } from '../api/productsApi';
 import { CreateProductDialog } from './CreateProductDialog';
+import { AuthImage } from '../../../shared/components/AuthImage';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Product } from '../../../shared/types';
@@ -235,6 +236,25 @@ export function ProductsTable() {
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
           currentPageReportTemplate="{first}-{last} de {totalRecords}"
         >
+          <Column
+            header=""
+            style={{ width: '60px' }}
+            body={(row: Product) => (
+              <div
+                className="w-10 h-10 flex items-center justify-center bg-gray-50 rounded overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AuthImage
+                  src={productsApi.imagePath(row.id, true)}
+                  alt={row.ref}
+                  preview
+                  width={40}
+                  height={40}
+                  fallback={<i className="pi pi-image text-gray-300 text-xl" />}
+                />
+              </div>
+            )}
+          />
           <Column field="ref" header="Ref" style={{ width: '120px', fontFamily: 'monospace' }} />
           <Column field="label" header="Etiqueta" />
           {showTenantColumn && (

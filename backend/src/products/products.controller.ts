@@ -7,6 +7,7 @@ import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService, UpdateProductDto, ProductContext } from './products.service';
+import { ProductImagesService } from './product-images.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto, ProductStatsDto } from './dto/filter-product.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -17,7 +18,10 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 @ApiBearerAuth()
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly service: ProductsService) {}
+  constructor(
+    private readonly service: ProductsService,
+    private readonly imagesService: ProductImagesService,
+  ) {}
 
   private ctx(user: AuthenticatedUser): ProductContext {
     return { userId: user.id, tenantId: user.tenantId, userType: user.userType };
@@ -138,5 +142,46 @@ export class ProductsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.deactivate(id, this.ctx(user));
+  }
+
+  @Get(':id/image')
+  @RequiresPermission('products.read')
+  @ApiOperation({ summary: 'Obtener imagen del producto' })
+  async getImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('thumb') thumb: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const { image, fullPath } = await this.imagesService.get(id, thumb === '1' || thumb === 'true', this.ctx(user));
+    res.setHeader('Content-Type', image.mimeType);
+    res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
+    res.sendFile(fullPath);
+  }
+
+  @Post(':id/image')
+  @RequiresPermission('products.write')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 10 * 1024 * 1024 },
+  }))
+  @ApiOperation({ summary: 'Subir/reemplazar imagen del producto (máx 10MB)' })
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!file) throw new BadRequestException('No se recibió archivo');
+    return this.imagesService.upload(id, file.buffer, file.mimetype, this.ctx(user));
+  }
+
+  @Delete(':id/image')
+  @RequiresPermission('products.write')
+  @ApiOperation({ summary: 'Eliminar imagen del producto' })
+  async deleteImage(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    await this.imagesService.remove(id, this.ctx(user));
+    return { ok: true };
   }
 }

@@ -168,6 +168,12 @@ jobs:
             npm ci
 
             echo ''
+            echo '→ [1.5/4] Asegurando directorio de uploads de imágenes de productos...'
+            sudo mkdir -p /var/www/gj-logistica/uploads/products
+            sudo chown -R ${{ secrets.DEPLOY_USER }}:${{ secrets.DEPLOY_USER }} /var/www/gj-logistica/uploads
+            sudo chmod -R 0750 /var/www/gj-logistica/uploads
+
+            echo ''
             echo '→ [2/4] Reiniciando backend con PM2...'
             cd ${{ secrets.DEPLOY_PATH }}
             pm2 reload ecosystem.config.js --only gj-backend 2>/dev/null || \

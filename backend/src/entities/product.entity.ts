@@ -136,4 +136,7 @@ export class Product {
 
   @OneToMany('OrderLine', 'product')
   orderLines: unknown[];
+
+  @OneToMany('ProductImage', 'product')
+  images: unknown[];
 }

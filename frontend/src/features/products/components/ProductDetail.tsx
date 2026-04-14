@@ -9,6 +9,7 @@ import { Toast } from 'primereact/toast';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { productsApi } from '../api/productsApi';
 import { EditProductDialog } from './EditProductDialog';
+import { ProductImageTab } from './ProductImageTab';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { canManageTenants } from '../../../shared/hooks/useTenants';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
@@ -254,6 +255,11 @@ export function ProductDetail({ id }: Props) {
                 </div>
               </div>
             </div>
+          </TabPanel>
+
+          {/* Tab: Imagen */}
+          <TabPanel header="Imagen">
+            <ProductImageTab productId={id} />
           </TabPanel>
 
           {/* Tab: Notas */}

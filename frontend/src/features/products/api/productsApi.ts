@@ -71,6 +71,25 @@ export const productsApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+  uploadImage: async (
+    productId: number,
+    file: File,
+  ): Promise<{ id: number; productId: number; filename: string; mimeType: string; sizeBytes: number; width: number | null; height: number | null; updatedAt: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await apiClient.post(`/products/${productId}/image`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data as unknown as {
+      id: number; productId: number; filename: string; mimeType: string;
+      sizeBytes: number; width: number | null; height: number | null; updatedAt: string;
+    };
+  },
+  deleteImage: async (productId: number): Promise<void> => {
+    await apiClient.delete(`/products/${productId}/image`);
+  },
+  imagePath: (productId: number, thumb = false): string =>
+    `/products/${productId}/image${thumb ? '?thumb=1' : ''}`,
   importExcel: async (file: File): Promise<{ created: number; updated: number; errors: string[] }> => {
     const form = new FormData();
     form.append('file', file);
