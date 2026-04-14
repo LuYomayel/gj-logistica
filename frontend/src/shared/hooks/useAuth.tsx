@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AuthUser } from "../types";
 import { authApi } from "../../features/auth/api/authApi";
 
@@ -50,6 +51,7 @@ interface AuthCtx {
 const AuthContext = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(() => {
     const stored = localStorage.getItem("gj_token");
     // Auto-clear expired token on mount
@@ -69,6 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = (t: string, u: AuthUser) => {
+    // Clear any cached data from a previous session — prevents cross-tenant leaks
+    queryClient.clear();
     localStorage.setItem("gj_token", t);
     localStorage.setItem("gj_user", JSON.stringify(u));
     setToken(t);
@@ -76,11 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = useCallback(() => {
+    queryClient.clear();
     localStorage.removeItem("gj_token");
     localStorage.removeItem("gj_user");
     setToken(null);
     setUser(null);
-  }, []);
+  }, [queryClient]);
 
   const refreshUser = useCallback(async () => {
     if (!token || isTokenExpired(token)) return;

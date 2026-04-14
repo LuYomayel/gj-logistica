@@ -8,6 +8,10 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Disable ETag/304 on API responses — breaks Axios (rejects 3xx by default)
+  // and causes stale data when switching users
+  (app.getHttpAdapter().getInstance() as { disable: (s: string) => void }).disable('etag');
+
   app.enableCors({
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(',')
