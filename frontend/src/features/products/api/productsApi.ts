@@ -8,6 +8,7 @@ export interface ProductFilters {
   rubro?: string;
   marca?: string;
   ref?: string;
+  tenantId?: number;
 }
 
 export interface ProductStatsFilters {
@@ -27,6 +28,7 @@ export interface CreateProductPayload {
   marca?: string;
   color?: string;
   posicion?: string;
+  tenantId?: number;
 }
 
 export const productsApi = {

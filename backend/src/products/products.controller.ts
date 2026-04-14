@@ -6,7 +6,7 @@ import {
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { ProductsService, UpdateProductDto } from './products.service';
+import { ProductsService, UpdateProductDto, ProductContext } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto, ProductStatsDto } from './dto/filter-product.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -19,6 +19,10 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 export class ProductsController {
   constructor(private readonly service: ProductsService) {}
 
+  private ctx(user: AuthenticatedUser): ProductContext {
+    return { userId: user.id, tenantId: user.tenantId, userType: user.userType };
+  }
+
   @Get()
   @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Listar productos con filtros' })
@@ -26,7 +30,7 @@ export class ProductsController {
     @Query() filter: FilterProductDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.findAll(filter, user.tenantId);
+    return this.service.findAll(filter, this.ctx(user));
   }
 
   @Get('stats')
@@ -102,7 +106,7 @@ export class ProductsController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.findOne(id, user.tenantId);
+    return this.service.findOne(id, this.ctx(user));
   }
 
   @Post()
@@ -112,7 +116,7 @@ export class ProductsController {
     @Body() dto: CreateProductDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.create(dto, user.id, user.tenantId);
+    return this.service.create(dto, this.ctx(user));
   }
 
   @Patch(':id')
@@ -121,14 +125,18 @@ export class ProductsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: Partial<UpdateProductDto>,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, this.ctx(user));
   }
 
   @Delete(':id')
   @RequiresPermission('products.delete')
   @ApiOperation({ summary: 'Desactivar producto' })
-  deactivate(@Param('id', ParseIntPipe) id: number) {
-    return this.service.deactivate(id);
+  deactivate(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.deactivate(id, this.ctx(user));
   }
 }

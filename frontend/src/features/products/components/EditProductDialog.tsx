@@ -3,11 +3,13 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, type CreateProductPayload } from '../api/productsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Product } from '../../../shared/types';
 
 interface Props {
@@ -21,7 +23,10 @@ type FormValues = CreateProductPayload & { description: string };
 
 export function EditProductDialog({ visible, onHide, product, onSaved }: Props) {
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const showTenantSelector = canManageTenants(user?.userType);
+  const { data: tenants = [] } = useTenants();
+  const activeTenants = tenants.filter((t) => t.isActive || t.id === product.entity);
   const [errorMsg, setErrorMsg] = useState('');
 
   const { control, handleSubmit, reset, register, formState: { errors } } = useForm<FormValues>({
@@ -36,6 +41,7 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
       subrubro: product.subrubro ?? '',
       rubro: product.rubro ?? '',
       talle: product.talle ?? '',
+      tenantId: product.entity,
     },
   });
 
@@ -52,6 +58,7 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
         subrubro: product.subrubro ?? '',
         rubro: product.rubro ?? '',
         talle: product.talle ?? '',
+        tenantId: product.entity,
       });
       setErrorMsg('');
     }
@@ -70,6 +77,7 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
         subrubro: values.subrubro || undefined,
         rubro: values.rubro || undefined,
         talle: values.talle || undefined,
+        tenantId: showTenantSelector ? values.tenantId : undefined,
       };
       return productsApi.update(product.id, payload);
     },
@@ -98,6 +106,35 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
       draggable={false}
     >
       <form onSubmit={handleSubmit((v) => mut.mutate(v))} className="flex flex-col gap-5 pt-2">
+
+        {showTenantSelector && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Organización</p>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">
+                Organización <span className="text-red-400">*</span>
+              </label>
+              <Controller
+                name="tenantId"
+                control={control}
+                rules={{ required: 'Seleccione una organización' }}
+                render={({ field, fieldState }) => (
+                  <>
+                    <Dropdown
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={activeTenants.map((t) => ({ label: `${t.name} (${t.code})`, value: t.id }))}
+                      placeholder="Seleccione organización..."
+                      filter
+                      className={`w-full ${fieldState.error ? 'p-invalid' : ''}`}
+                    />
+                    {fieldState.error && <small className="text-red-500">{fieldState.error.message}</small>}
+                  </>
+                )}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Datos básicos */}
         <div>

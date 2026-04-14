@@ -1,9 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { Product } from '../entities/product.entity';
+import { Tenant } from '../entities/tenant.entity';
+
+type Ctx = {
+  userId: number;
+  tenantId: number | null;
+  userType: 'super_admin' | 'client_admin' | 'client_user';
+};
+const superAdminCtx: Ctx = { userId: 1, tenantId: null, userType: 'super_admin' };
+const clientCtx = (tid = 1): Ctx => ({ userId: 2, tenantId: tid, userType: 'client_user' });
 
 const mockProduct: Partial<Product> = {
   id: 1,
@@ -25,6 +34,7 @@ const mockQb = {
   take: jest.fn().mockReturnThis(),
   orderBy: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
+  leftJoinAndSelect: jest.fn().mockReturnThis(),
   getManyAndCount: jest.fn().mockResolvedValue([[mockProduct], 1]),
   getMany: jest.fn().mockResolvedValue([mockProduct]),
 };
@@ -49,6 +59,7 @@ const mockDataSource = {
 describe('ProductsService', () => {
   let service: ProductsService;
   let repo: { findOne: jest.Mock; create: jest.Mock; save: jest.Mock; createQueryBuilder: jest.Mock };
+  let tenantRepo: { findOne: jest.Mock };
 
   beforeEach(async () => {
     repo = {
@@ -57,11 +68,15 @@ describe('ProductsService', () => {
       save: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(mockQb),
     };
+    tenantRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 2, name: 'Org 2', code: 'ORG2', isActive: true }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductsService,
         { provide: getRepositoryToken(Product), useValue: repo },
+        { provide: getRepositoryToken(Tenant), useValue: tenantRepo },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
@@ -71,25 +86,46 @@ describe('ProductsService', () => {
     repo.createQueryBuilder.mockReturnValue(mockQb);
     mockQb.getManyAndCount.mockResolvedValue([[mockProduct], 1]);
     mockQb.getMany.mockResolvedValue([mockProduct]);
+    tenantRepo.findOne.mockResolvedValue({ id: 2, name: 'Org 2', code: 'ORG2', isActive: true });
   });
 
   describe('findAll', () => {
     it('should return paginated products', async () => {
-      const result = await service.findAll({ page: 1, limit: 50 }, null);
+      const result = await service.findAll({ page: 1, limit: 50 }, superAdminCtx);
       expect(result.total).toBe(1);
       expect(result.items[0].ref).toBe('BI000032');
     });
 
     it('should apply search filter when provided', async () => {
-      await service.findAll({ search: 'Remera', page: 1, limit: 50 }, null);
+      await service.findAll({ search: 'Remera', page: 1, limit: 50 }, superAdminCtx);
       expect(mockQb.andWhere).toHaveBeenCalled();
     });
 
     it('should apply rubro filter when provided', async () => {
-      await service.findAll({ rubro: 'Indumentaria', page: 1, limit: 50 }, null);
+      await service.findAll({ rubro: 'Indumentaria', page: 1, limit: 50 }, superAdminCtx);
       expect(mockQb.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('rubro'),
         expect.any(Object),
+      );
+    });
+
+    it('super_admin filter by tenantId is honored', async () => {
+      await service.findAll({ tenantId: 3, page: 1, limit: 50 }, superAdminCtx);
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('entity'),
+        expect.objectContaining({ tenantId: 3 }),
+      );
+    });
+
+    it('client_user cannot override tenant via filter.tenantId', async () => {
+      await service.findAll({ tenantId: 99, page: 1, limit: 50 }, clientCtx(1));
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('entity'),
+        expect.objectContaining({ tenantId: 1 }),
+      );
+      expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tenantId: 99 }),
       );
     });
   });
@@ -97,13 +133,13 @@ describe('ProductsService', () => {
   describe('findOne', () => {
     it('should return product when found', async () => {
       repo.findOne.mockResolvedValue(mockProduct as Product);
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, superAdminCtx);
       expect(result.ref).toBe('BI000032');
     });
 
     it('should throw NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
-      await expect(service.findOne(99)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(99, superAdminCtx)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -121,18 +157,85 @@ describe('ProductsService', () => {
   });
 
   describe('create', () => {
-    it('should create a product', async () => {
+    it('client_user creates using their own tenant (dto.tenantId ignored)', async () => {
       repo.findOne.mockResolvedValue(null);
-      repo.create.mockReturnValue(mockProduct as Product);
-      repo.save.mockResolvedValue(mockProduct as Product);
+      repo.create.mockImplementation((x: any) => x);
+      repo.save.mockImplementation(async (x: any) => ({ ...mockProduct, ...x }));
 
-      const result = await service.create({ ref: 'BI000032', label: 'Remera' });
+      const result = await service.create(
+        { ref: 'BI000032', label: 'Remera', tenantId: 99 } as any,
+        clientCtx(7),
+      );
+      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ entity: 7 }));
       expect(result.ref).toBe('BI000032');
     });
 
-    it('should throw ConflictException if ref exists', async () => {
+    it('should throw ConflictException if ref exists in same tenant', async () => {
       repo.findOne.mockResolvedValue(mockProduct as Product);
-      await expect(service.create({ ref: 'BI000032' })).rejects.toThrow(ConflictException);
+      await expect(service.create({ ref: 'BI000032' }, clientCtx(1))).rejects.toThrow(ConflictException);
+    });
+
+    it('super_admin must provide tenantId on create', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(service.create({ ref: 'NEW1' }, superAdminCtx)).rejects.toThrow(BadRequestException);
+    });
+
+    it('super_admin with invalid tenantId fails', async () => {
+      repo.findOne.mockResolvedValue(null);
+      tenantRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.create({ ref: 'NEW1', tenantId: 999 } as any, superAdminCtx),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('super_admin with inactive tenant fails', async () => {
+      repo.findOne.mockResolvedValue(null);
+      tenantRepo.findOne.mockResolvedValue({ id: 2, name: 'X', code: 'X', isActive: false });
+      await expect(
+        service.create({ ref: 'NEW1', tenantId: 2 } as any, superAdminCtx),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('super_admin with valid tenantId creates with that entity', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockImplementation((x: any) => x);
+      repo.save.mockImplementation(async (x: any) => ({ ...mockProduct, ...x }));
+      const result = await service.create(
+        { ref: 'NEW1', tenantId: 2 } as any,
+        superAdminCtx,
+      );
+      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ entity: 2 }));
+      expect(result.ref).toBe('NEW1');
+    });
+  });
+
+  describe('update', () => {
+    it('super_admin can change entity via tenantId', async () => {
+      const product = { ...mockProduct, entity: 1 } as Product;
+      repo.findOne.mockResolvedValue(product);
+      repo.save.mockImplementation(async (x: any) => x);
+
+      const result = await service.update(1, { tenantId: 2 } as any, superAdminCtx);
+      expect(result.entity).toBe(2);
+    });
+
+    it('super_admin change entity with invalid tenant fails', async () => {
+      const product = { ...mockProduct, entity: 1 } as Product;
+      repo.findOne.mockResolvedValue(product);
+      tenantRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.update(1, { tenantId: 999 } as any, superAdminCtx),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('client_user cannot change entity (tenantId in dto ignored)', async () => {
+      const product = { ...mockProduct, entity: 1 } as Product;
+      repo.findOne.mockResolvedValue(product);
+      repo.save.mockImplementation(async (x: any) => x);
+
+      const result = await service.update(1, { tenantId: 99, label: 'X' } as any, clientCtx(1));
+      expect(result.entity).toBe(1);
+      expect(result.label).toBe('X');
     });
   });
 
@@ -149,7 +252,7 @@ describe('ProductsService', () => {
       repo.findOne.mockResolvedValue(product);
       repo.save.mockResolvedValue({ ...product, status: 0 });
 
-      const result = await service.deactivate(1);
+      const result = await service.deactivate(1, superAdminCtx);
       expect(result.status).toBe(0);
     });
   });

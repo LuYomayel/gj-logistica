@@ -30,6 +30,13 @@ export class FilterProductDto {
   @IsOptional()
   lowStock?: boolean;
 
+  @ApiPropertyOptional({ description: 'Filtrar por organización (solo super_admin)' })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  tenantId?: number;
+
   @ApiPropertyOptional({ default: 1 })
   @Type(() => Number)
   @IsInt()

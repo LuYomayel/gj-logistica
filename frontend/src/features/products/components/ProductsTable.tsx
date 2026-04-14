@@ -7,19 +7,24 @@ import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
+import { Dropdown } from 'primereact/dropdown';
 import { productsApi, type ProductFilters } from '../api/productsApi';
 import { CreateProductDialog } from './CreateProductDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Product } from '../../../shared/types';
 
 export function ProductsTable() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const showTenantColumn = canManageTenants(user?.userType);
+  const { data: tenants = [] } = useTenants();
   const [filters, setFilters] = useState<ProductFilters>({ page: 1, limit: 20 });
   const [searchInput, setSearchInput] = useState('');
   const [rubInput, setRubInput] = useState('');
   const [marcaInput, setMarcaInput] = useState('');
+  const [tenantInput, setTenantInput] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
@@ -62,6 +67,7 @@ export function ProductsTable() {
       search: searchInput || undefined,
       rubro: rubInput || undefined,
       marca: marcaInput || undefined,
+      tenantId: tenantInput ?? undefined,
     });
   };
 
@@ -69,6 +75,7 @@ export function ProductsTable() {
     setSearchInput('');
     setRubInput('');
     setMarcaInput('');
+    setTenantInput(null);
     setFilters({ page: 1, limit: 20 });
   };
 
@@ -177,6 +184,21 @@ export function ProductsTable() {
               className="text-sm"
             />
           </div>
+          {showTenantColumn && (
+            <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[200px]">
+              <label className="text-xs font-medium text-gray-600">Organización</label>
+              <Dropdown
+                value={tenantInput}
+                onChange={(e) => setTenantInput(e.value)}
+                options={[
+                  { label: 'Todas', value: null },
+                  ...tenants.map((t) => ({ label: `${t.name} (${t.code})`, value: t.id })),
+                ]}
+                placeholder="Todas"
+                className="text-sm"
+              />
+            </div>
+          )}
           <Button
             label="Buscar"
             icon="pi pi-search"
@@ -215,6 +237,13 @@ export function ProductsTable() {
         >
           <Column field="ref" header="Ref" style={{ width: '120px', fontFamily: 'monospace' }} />
           <Column field="label" header="Etiqueta" />
+          {showTenantColumn && (
+            <Column
+              header="Organización"
+              style={{ width: '180px' }}
+              body={(row: Product) => row.tenant?.name ?? `#${row.entity}`}
+            />
+          )}
           <Column field="barcode" header="Código de barras" style={{ width: '160px' }} />
           <Column
             field="stock"

@@ -3,6 +3,7 @@ import {
   CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Unique,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Tenant } from './tenant.entity';
 
 @Entity('products')
 @Unique('UQ_product_ref_entity', ['ref', 'entity'])
@@ -119,6 +120,10 @@ export class Product {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'createdByUserId' })
   createdBy: User | null;
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'entity' })
+  tenant: Tenant | null;
 
   @OneToMany('ProductPrice', 'product')
   prices: unknown[];

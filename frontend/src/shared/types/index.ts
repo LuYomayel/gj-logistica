@@ -55,6 +55,8 @@ export interface Product {
   keywords: string | null;
   createdAt: string;
   updatedAt: string;
+  entity: number;
+  tenant?: { id: number; name: string; code: string } | null;
 }
 
 export interface OrderLine {

@@ -1,6 +1,6 @@
 import {
   IsString, IsNotEmpty, IsOptional, IsInt, IsNumber,
-  MaxLength, IsDecimal,
+  MaxLength, IsDecimal, Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -69,4 +69,8 @@ export class CreateProductDto {
   @ApiPropertyOptional() @IsString() @IsOptional() descripcionCorta?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() keywords?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() eanInterno?: string;
+
+  @ApiPropertyOptional({ description: 'Organización (solo super_admin la puede setear)' })
+  @IsInt() @Min(1) @IsOptional() @Type(() => Number)
+  tenantId?: number;
 }

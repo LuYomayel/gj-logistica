@@ -1,11 +1,18 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, FindOptionsWhere, ILike } from 'typeorm';
+import { Repository, DataSource, FindOptionsWhere } from 'typeorm';
 import { Product } from '../entities/product.entity';
+import { Tenant } from '../entities/tenant.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto, ProductStatsDto } from './dto/filter-product.dto';
 
 export class UpdateProductDto extends CreateProductDto {}
+
+export interface ProductContext {
+  userId: number;
+  tenantId: number | null;
+  userType: 'super_admin' | 'client_admin' | 'client_user';
+}
 
 export interface PaginatedProducts {
   items: Product[];
@@ -38,13 +45,34 @@ export interface ProductStatsResult {
 export class ProductsService {
   constructor(
     @InjectRepository(Product) private repo: Repository<Product>,
+    @InjectRepository(Tenant) private tenantRepo: Repository<Tenant>,
     private dataSource: DataSource,
   ) {}
 
-  async findAll(filter: FilterProductDto, tenantId: number | null): Promise<PaginatedProducts> {
-    const { search, rubro, subrubro, marca, talle, color, lowStock, page = 1, limit = 50 } = filter;
+  private isSuperAdmin(ctx: ProductContext): boolean {
+    return ctx.tenantId === null;
+  }
 
-    const qb = this.repo.createQueryBuilder('p');
+  private async assertTenantValid(tenantId: number): Promise<void> {
+    const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+    if (!tenant) throw new BadRequestException(`Organización #${tenantId} no encontrada`);
+    if (!tenant.isActive) throw new BadRequestException(`Organización #${tenantId} está inactiva`);
+  }
+
+  private async resolveTenantForCreate(ctx: ProductContext, dtoTenantId: number | undefined): Promise<number> {
+    if (this.isSuperAdmin(ctx)) {
+      if (!dtoTenantId) throw new BadRequestException('Debe seleccionar una organización');
+      await this.assertTenantValid(dtoTenantId);
+      return dtoTenantId;
+    }
+    return ctx.tenantId as number;
+  }
+
+  async findAll(filter: FilterProductDto, ctx: ProductContext): Promise<PaginatedProducts> {
+    const { search, rubro, subrubro, marca, talle, color, lowStock, tenantId: filterTenantId, page = 1, limit = 50 } = filter;
+
+    const qb = this.repo.createQueryBuilder('p')
+      .leftJoinAndSelect('p.tenant', 'tenant');
 
     if (search) {
       qb.andWhere(
@@ -58,7 +86,13 @@ export class ProductsService {
     if (talle) qb.andWhere('p.talle LIKE :talle', { talle: `%${talle}%` });
     if (color) qb.andWhere('p.color LIKE :color', { color: `%${color}%` });
     if (lowStock) qb.andWhere('p.stock < p.stockAlertThreshold');
-    if (tenantId !== null) qb.andWhere('p.entity = :tenantId', { tenantId });
+
+    // Tenant scoping: client users locked to own tenant; super_admin can filter or see all.
+    if (this.isSuperAdmin(ctx)) {
+      if (filterTenantId) qb.andWhere('p.entity = :tenantId', { tenantId: filterTenantId });
+    } else {
+      qb.andWhere('p.entity = :tenantId', { tenantId: ctx.tenantId });
+    }
 
     qb.skip((page - 1) * limit).take(limit).orderBy('p.ref', 'ASC');
 
@@ -66,10 +100,10 @@ export class ProductsService {
     return { items, total, page, limit };
   }
 
-  async findOne(id: number, tenantId?: number | null): Promise<Product> {
+  async findOne(id: number, ctx: ProductContext): Promise<Product> {
     const where: FindOptionsWhere<Product> = { id };
-    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
-    const product = await this.repo.findOne({ where });
+    if (!this.isSuperAdmin(ctx)) where.entity = ctx.tenantId as number;
+    const product = await this.repo.findOne({ where, relations: ['tenant'] });
     if (!product) throw new NotFoundException(`Producto ${id} no encontrado`);
     return product;
   }
@@ -80,25 +114,40 @@ export class ProductsService {
     return product;
   }
 
-  async create(dto: CreateProductDto, createdByUserId?: number, tenantId?: number | null): Promise<Product> {
-    // Uniqueness is scoped to tenant: same ref can exist in different tenants
-    const effectiveEntity = tenantId ?? 1;
+  async create(dto: CreateProductDto, ctx: ProductContext): Promise<Product> {
+    const effectiveEntity = await this.resolveTenantForCreate(ctx, dto.tenantId);
+
     const existing = await this.repo.findOne({ where: { ref: dto.ref, entity: effectiveEntity } });
     if (existing) throw new ConflictException(`Ref '${dto.ref}' ya existe en este tenant`);
 
+    const { tenantId: _tenantIdIgnored, ...rest } = dto;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const product = (this.repo.create({ ...(dto as any), createdByUserId: createdByUserId ?? null, status: 1, statusBuy: 1, entity: tenantId ?? 1 } as any) as unknown) as Product;
+    const product = (this.repo.create({
+      ...(rest as any),
+      createdByUserId: ctx.userId ?? null,
+      status: 1,
+      statusBuy: 1,
+      entity: effectiveEntity,
+    } as any) as unknown) as Product;
     return this.repo.save(product);
   }
 
-  async update(id: number, dto: Partial<UpdateProductDto>): Promise<Product> {
-    const product = await this.findOne(id);
-    Object.assign(product, dto);
+  async update(id: number, dto: Partial<UpdateProductDto>, ctx: ProductContext): Promise<Product> {
+    const product = await this.findOne(id, ctx);
+    const { tenantId: dtoTenantId, ...rest } = dto;
+
+    Object.assign(product, rest);
+
+    if (dtoTenantId !== undefined && this.isSuperAdmin(ctx)) {
+      await this.assertTenantValid(dtoTenantId);
+      product.entity = dtoTenantId;
+    }
+
     return this.repo.save(product);
   }
 
-  async deactivate(id: number): Promise<Product> {
-    const product = await this.findOne(id);
+  async deactivate(id: number, ctx: ProductContext): Promise<Product> {
+    const product = await this.findOne(id, ctx);
     product.status = 0;
     return this.repo.save(product);
   }
