@@ -141,6 +141,9 @@ export class ProductsService {
     if (dtoTenantId !== undefined && this.isSuperAdmin(ctx)) {
       await this.assertTenantValid(dtoTenantId);
       product.entity = dtoTenantId;
+      // Must also update the relation — TypeORM uses `tenant.id` over `entity`
+      // when both are set, and `findOne` loaded `tenant` with the old id.
+      product.tenant = { id: dtoTenantId } as Tenant;
     }
 
     return this.repo.save(product);
