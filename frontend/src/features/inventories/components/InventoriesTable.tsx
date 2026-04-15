@@ -6,9 +6,11 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
 import { Skeleton } from 'primereact/skeleton';
 import { inventoriesApi, type CreateInventoryPayload } from '../api/inventoriesApi';
+import { warehousesApi } from '../../warehouses/api/warehousesApi';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Inventory } from '../../../shared/types';
 import { INVENTORY_STATUS } from '../../../shared/types';
@@ -25,6 +27,16 @@ export function InventoriesTable() {
     queryKey: ['inventories', page],
     queryFn: () => inventoriesApi.list({ page, limit: 20 }),
   });
+
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses', 'all'],
+    queryFn: () => warehousesApi.list(),
+    enabled: showNew,
+  });
+  const warehouseOptions = [
+    { label: 'Todos los almacenes', value: null as number | null },
+    ...(warehousesData?.data ?? []).map((w) => ({ label: w.name, value: w.id })),
+  ];
 
   const createMutation = useMutation({
     mutationFn: inventoriesApi.create,
@@ -132,17 +144,23 @@ export function InventoriesTable() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">ID Almacén (opcional)</label>
-            <InputText
-              value={form.warehouseId ? String(form.warehouseId) : ''}
+            <label className="text-sm font-medium text-gray-700">Almacén</label>
+            <Dropdown
+              value={form.warehouseId ?? null}
+              options={warehouseOptions}
               onChange={(e) =>
                 setForm((f) => ({
                   ...f,
-                  warehouseId: e.target.value ? Number(e.target.value) : undefined,
+                  warehouseId: e.value ?? undefined,
                 }))
               }
-              placeholder="Dejar vacío = todos los almacenes"
+              placeholder="Seleccionar almacén"
+              filter
+              showClear
             />
+            <small className="text-xs text-gray-500">
+              Dejar vacío = inventario sobre todos los almacenes
+            </small>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button
