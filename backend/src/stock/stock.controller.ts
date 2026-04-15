@@ -27,8 +27,11 @@ export class StockController {
   @Get('movements/product/:productId')
   @RequiresPermission('stock.read')
   @ApiOperation({ summary: 'Movimientos de un producto' })
-  getProductMovements(@Param('productId', ParseIntPipe) productId: number) {
-    return this.service.getProductMovements(productId);
+  getProductMovements(
+    @Param('productId', ParseIntPipe) productId: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.getProductMovements(productId, user.tenantId);
   }
 
   @Post('movements')
@@ -54,7 +57,7 @@ export class StockController {
   @Get('at-date')
   @RequiresPermission('stock.read')
   @ApiOperation({ summary: 'Stock histórico a una fecha determinada' })
-  stockAtDate(@Query() dto: StockAtDateDto) {
-    return this.service.getStockAtDate(dto);
+  stockAtDate(@Query() dto: StockAtDateDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.getStockAtDate(dto, user.tenantId);
   }
 }

@@ -45,15 +45,19 @@ export class ThirdPartiesController {
   @Patch(':id')
   @RequiresPermission('third_parties.write')
   @ApiOperation({ summary: 'Actualizar empresa' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<UpdateThirdPartyDto>) {
-    return this.service.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: Partial<UpdateThirdPartyDto>,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.update(id, dto, user.tenantId);
   }
 
   @Get(':id/sales-reps')
   @RequiresPermission('third_parties.read')
   @ApiOperation({ summary: 'Vendedores asignados a la empresa' })
-  getSalesReps(@Param('id', ParseIntPipe) id: number) {
-    return this.service.getSalesReps(id);
+  getSalesReps(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.getSalesReps(id, user.tenantId);
   }
 
   @Post(':id/sales-reps')
@@ -62,8 +66,9 @@ export class ThirdPartiesController {
   addSalesRep(
     @Param('id', ParseIntPipe) id: number,
     @Body('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.addSalesRep(id, userId);
+    return this.service.addSalesRep(id, userId, user.tenantId);
   }
 
   @Delete(':id/sales-reps/:userId')
@@ -72,7 +77,8 @@ export class ThirdPartiesController {
   removeSalesRep(
     @Param('id', ParseIntPipe) id: number,
     @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.removeSalesRep(id, userId);
+    return this.service.removeSalesRep(id, userId, user.tenantId);
   }
 }

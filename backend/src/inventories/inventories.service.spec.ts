@@ -96,7 +96,7 @@ describe('InventoriesService', () => {
       ]);
       mockStockRepo.findOne.mockResolvedValue({ quantity: 10 });
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, null);
       expect(result.id).toBe(1);
       expect(result.lines).toHaveLength(1);
       expect(result.lines[0].expectedQuantity).toBe(10);
@@ -104,7 +104,7 @@ describe('InventoriesService', () => {
 
     it('should throw NotFoundException when not found', async () => {
       mockInventoryRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, null)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -130,7 +130,7 @@ describe('InventoriesService', () => {
       mockLineRepo.create.mockReturnValue(line);
       mockLineRepo.save.mockResolvedValue(line);
 
-      const result = await service.addLine(1, { warehouseId: 1, productId: 5, realQuantity: 48 }, 3);
+      const result = await service.addLine(1, { warehouseId: 1, productId: 5, realQuantity: 48 }, 3, null);
       expect(result.expectedQuantity).toBe(50);
       expect(result.realQuantity).toBe(48);
     });
@@ -138,7 +138,7 @@ describe('InventoriesService', () => {
     it('should throw BadRequestException when inventory is validated', async () => {
       mockInventoryRepo.findOne.mockResolvedValue({ id: 1, status: 1 });
       await expect(
-        service.addLine(1, { warehouseId: 1, productId: 5, realQuantity: 10 }, 3),
+        service.addLine(1, { warehouseId: 1, productId: 5, realQuantity: 10 }, 3, null),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -150,14 +150,14 @@ describe('InventoriesService', () => {
       mockLineRepo.findOne.mockResolvedValue(line);
       mockLineRepo.save.mockResolvedValue({ ...line, realQuantity: 10 });
 
-      const result = await service.updateLine(1, 2, { realQuantity: 10 });
+      const result = await service.updateLine(1, 2, { realQuantity: 10 }, null);
       expect(result.realQuantity).toBe(10);
     });
 
     it('should throw NotFoundException for unknown line', async () => {
       mockInventoryRepo.findOne.mockResolvedValue({ id: 1, status: 0 });
       mockLineRepo.findOne.mockResolvedValue(null);
-      await expect(service.updateLine(1, 999, { realQuantity: 5 })).rejects.toThrow(NotFoundException);
+      await expect(service.updateLine(1, 999, { realQuantity: 5 }, null)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -166,13 +166,13 @@ describe('InventoriesService', () => {
       const inv = { id: 1, status: 0 };
       mockInventoryRepo.findOne.mockResolvedValue(inv);
       mockInventoryRepo.remove.mockResolvedValue(inv);
-      await service.remove(1);
+      await service.remove(1, null);
       expect(mockInventoryRepo.remove).toHaveBeenCalledWith(inv);
     });
 
     it('should throw BadRequestException when trying to delete a validated inventory', async () => {
       mockInventoryRepo.findOne.mockResolvedValue({ id: 1, status: 1 });
-      await expect(service.remove(1)).rejects.toThrow(BadRequestException);
+      await expect(service.remove(1, null)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -181,7 +181,7 @@ describe('InventoriesService', () => {
       const mockInvRepo = { findOne: jest.fn().mockResolvedValue({ id: 1, status: 1 }) };
       mockQR.manager.getRepository.mockReturnValue(mockInvRepo);
 
-      await expect(service.validate(1, 3)).rejects.toThrow(BadRequestException);
+      await expect(service.validate(1, 3, null)).rejects.toThrow(BadRequestException);
       expect(mockQR.rollbackTransaction).toHaveBeenCalled();
     });
 
@@ -226,7 +226,7 @@ describe('InventoriesService', () => {
         .mockResolvedValueOnce(inventory)        // first call (check status)
         .mockResolvedValueOnce({ ...inventory, status: 1 }); // after update
 
-      await service.validate(1, 3);
+      await service.validate(1, 3, null);
       expect(mockQR.commitTransaction).toHaveBeenCalled();
       expect(mockMovRepo.save).toHaveBeenCalled();
     });

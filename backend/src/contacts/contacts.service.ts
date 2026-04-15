@@ -70,8 +70,8 @@ export class ContactsService {
     return this.repo.save(contact);
   }
 
-  async update(id: number, dto: Partial<UpdateContactDto>): Promise<Contact> {
-    const contact = await this.findOne(id);
+  async update(id: number, dto: Partial<UpdateContactDto>, tenantId: number | null): Promise<Contact> {
+    const contact = await this.findOne(id, tenantId);
     if (dto.dni && dto.dni !== contact.dni) {
       const existing = await this.repo.findOne({ where: { dni: dto.dni } });
       if (existing) throw new ConflictException(`DNI ${dto.dni} ya registrado`);
@@ -80,8 +80,8 @@ export class ContactsService {
     return this.repo.save(contact);
   }
 
-  async deactivate(id: number): Promise<Contact> {
-    const contact = await this.findOne(id);
+  async deactivate(id: number, tenantId: number | null): Promise<Contact> {
+    const contact = await this.findOne(id, tenantId);
     contact.status = 0;
     return this.repo.save(contact);
   }

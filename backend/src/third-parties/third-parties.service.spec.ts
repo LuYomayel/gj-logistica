@@ -91,7 +91,7 @@ describe('ThirdPartiesService', () => {
       salesRepRepo.create.mockReturnValue(rep);
       salesRepRepo.save.mockResolvedValue(rep);
 
-      const result = await service.addSalesRep(1, 3);
+      const result = await service.addSalesRep(1, 3, null);
       expect(result.userId).toBe(3);
     });
 
@@ -100,7 +100,7 @@ describe('ThirdPartiesService', () => {
       const existing = { thirdPartyId: 1, userId: 3 } as SalesRepresentative;
       salesRepRepo.findOne.mockResolvedValue(existing);
 
-      const result = await service.addSalesRep(1, 3);
+      const result = await service.addSalesRep(1, 3, null);
       expect(result).toBe(existing);
       expect(salesRepRepo.save).not.toHaveBeenCalled();
     });

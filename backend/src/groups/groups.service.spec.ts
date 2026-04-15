@@ -5,6 +5,7 @@ import { NotFoundException, ConflictException } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { Group } from '../entities/group.entity';
 import { UserGroupMembership } from '../entities/user-group-membership.entity';
+import { User } from '../entities/user.entity';
 
 const mockGroup: Partial<Group> = {
   id: 1,
@@ -41,6 +42,12 @@ describe('GroupsService', () => {
             remove: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ id: 5, entity: 1 }),
+          },
+        },
       ],
     }).compile();
 
@@ -52,7 +59,7 @@ describe('GroupsService', () => {
   describe('findAll', () => {
     it('should return array of groups', async () => {
       groupRepo.find.mockResolvedValue([mockGroup as Group]);
-      const result = await service.findAll();
+      const result = await service.findAll(null);
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('Comercial');
     });
@@ -61,13 +68,13 @@ describe('GroupsService', () => {
   describe('findOne', () => {
     it('should return group when found', async () => {
       groupRepo.findOne.mockResolvedValue(mockGroup as Group);
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, null);
       expect(result.name).toBe('Comercial');
     });
 
     it('should throw NotFoundException when not found', async () => {
       groupRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, null)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -77,13 +84,13 @@ describe('GroupsService', () => {
       groupRepo.create.mockReturnValue(mockGroup as Group);
       groupRepo.save.mockResolvedValue(mockGroup as Group);
 
-      const result = await service.create({ name: 'Comercial' });
+      const result = await service.create({ name: 'Comercial' }, 1, 'client_admin');
       expect(result.name).toBe('Comercial');
     });
 
     it('should throw ConflictException if name exists', async () => {
       groupRepo.findOne.mockResolvedValue(mockGroup as Group);
-      await expect(service.create({ name: 'Comercial' })).rejects.toThrow(ConflictException);
+      await expect(service.create({ name: 'Comercial' }, 1, 'client_admin')).rejects.toThrow(ConflictException);
     });
   });
 
@@ -95,14 +102,14 @@ describe('GroupsService', () => {
       membershipRepo.create.mockReturnValue(membership);
       membershipRepo.save.mockResolvedValue(membership);
 
-      const result = await service.addMember(1, 5);
+      const result = await service.addMember(1, 5, null);
       expect(result.userId).toBe(5);
     });
 
     it('should throw ConflictException if already a member', async () => {
       groupRepo.findOne.mockResolvedValue(mockGroup as Group);
       membershipRepo.findOne.mockResolvedValue({ groupId: 1, userId: 5 } as UserGroupMembership);
-      await expect(service.addMember(1, 5)).rejects.toThrow(ConflictException);
+      await expect(service.addMember(1, 5, null)).rejects.toThrow(ConflictException);
     });
   });
 
@@ -113,13 +120,13 @@ describe('GroupsService', () => {
       membershipRepo.findOne.mockResolvedValue(membership);
       membershipRepo.remove.mockResolvedValue(membership);
 
-      await expect(service.removeMember(1, 5)).resolves.toBeUndefined();
+      await expect(service.removeMember(1, 5, null)).resolves.toBeUndefined();
     });
 
     it('should throw NotFoundException if not a member', async () => {
       groupRepo.findOne.mockResolvedValue(mockGroup as Group);
       membershipRepo.findOne.mockResolvedValue(null);
-      await expect(service.removeMember(1, 99)).rejects.toThrow(NotFoundException);
+      await expect(service.removeMember(1, 99, null)).rejects.toThrow(NotFoundException);
     });
   });
 });

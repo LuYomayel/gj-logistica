@@ -30,8 +30,10 @@ export class UsersService {
     });
   }
 
-  async findOne(id: number): Promise<User> {
-    const user = await this.userRepo.findOne({ where: { id } });
+  async findOne(id: number, tenantId?: number | null): Promise<User> {
+    const where: { id: number; entity?: number } = { id };
+    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
+    const user = await this.userRepo.findOne({ where });
     if (!user) throw new NotFoundException(`Usuario ${id} no encontrado`);
     return user;
   }
@@ -62,9 +64,9 @@ export class UsersService {
   async update(
     id: number,
     dto: UpdateUserDto,
-    requester?: { id: number; userType: string },
+    requester?: { id: number; userType: string; tenantId?: number | null },
   ): Promise<User> {
-    const user = await this.findOne(id);
+    const user = await this.findOne(id, requester?.tenantId ?? null);
 
     // Prevent privilege escalation: only super_admin can change these fields
     if (!requester || requester.userType !== 'super_admin') {
@@ -87,14 +89,14 @@ export class UsersService {
     return this.userRepo.save(user);
   }
 
-  async deactivate(id: number): Promise<User> {
-    const user = await this.findOne(id);
+  async deactivate(id: number, tenantId: number | null): Promise<User> {
+    const user = await this.findOne(id, tenantId);
     user.status = 0;
     return this.userRepo.save(user);
   }
 
-  async activate(id: number): Promise<User> {
-    const user = await this.findOne(id);
+  async activate(id: number, tenantId: number | null): Promise<User> {
+    const user = await this.findOne(id, tenantId);
     user.status = 1;
     return this.userRepo.save(user);
   }
@@ -102,9 +104,9 @@ export class UsersService {
   async changePassword(
     id: number,
     dto: ChangePasswordDto,
-    requester: { id: number; permissions: string[] },
+    requester: { id: number; permissions: string[]; tenantId?: number | null },
   ): Promise<void> {
-    const user = await this.findOne(id);
+    const user = await this.findOne(id, requester.tenantId ?? null);
     const isSelf = requester.id === id;
     const hasAdminPerm =
       requester.permissions.includes('*') ||
@@ -130,8 +132,8 @@ export class UsersService {
     await this.userRepo.save(user);
   }
 
-  async getUserGroups(userId: number) {
-    await this.findOne(userId);
+  async getUserGroups(userId: number, tenantId: number | null) {
+    await this.findOne(userId, tenantId);
     return this.membershipRepo.find({
       where: { userId },
       relations: { group: true },

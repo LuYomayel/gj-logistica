@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -8,10 +9,12 @@ import { useNavigate } from 'react-router-dom';
 import { warehousesApi, type CreateWarehousePayload } from '../api/warehousesApi';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
+import type { Warehouse } from '../../../shared/types';
 
 interface Props {
   visible: boolean;
   onHide: () => void;
+  warehouse?: Warehouse;
 }
 
 const STATUS_OPTIONS = [
@@ -19,35 +22,67 @@ const STATUS_OPTIONS = [
   { label: 'Cerrado', value: 0 },
 ];
 
-export function CreateWarehouseDialog({ visible, onHide }: Props) {
+export function CreateWarehouseDialog({ visible, onHide, warehouse }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isSuperAdmin = canManageTenants(user?.userType);
   const { data: tenantsData } = useTenants();
   const tenantOptions = (tenantsData ?? []).map((t) => ({ label: t.name, value: t.id }));
+  const isEdit = !!warehouse;
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<CreateWarehousePayload>({
     defaultValues: { name: '', shortName: '', description: '', location: '', address: '', phone: '', status: 1, tenantId: undefined },
   });
 
+  useEffect(() => {
+    if (!visible) return;
+    if (warehouse) {
+      reset({
+        name: warehouse.name,
+        shortName: warehouse.shortName ?? '',
+        description: warehouse.description ?? '',
+        location: warehouse.location ?? '',
+        address: warehouse.address ?? '',
+        phone: warehouse.phone ?? '',
+        status: warehouse.status,
+        tenantId: warehouse.tenant?.id ?? warehouse.entity ?? undefined,
+      });
+    } else {
+      reset({ name: '', shortName: '', description: '', location: '', address: '', phone: '', status: 1, tenantId: undefined });
+    }
+  }, [visible, warehouse, reset]);
+
   const createMut = useMutation({
     mutationFn: warehousesApi.create,
-    onSuccess: (warehouse) => {
+    onSuccess: (wh) => {
       void queryClient.invalidateQueries({ queryKey: ['warehouses'] });
       reset();
       onHide();
-      navigate(`/warehouses/${warehouse.id}`);
+      navigate(`/warehouses/${wh.id}`);
+    },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (values: CreateWarehousePayload) => warehousesApi.update(warehouse!.id, values),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      void queryClient.invalidateQueries({ queryKey: ['warehouses', warehouse!.id] });
+      onHide();
     },
   });
 
   const onSubmit = (values: CreateWarehousePayload) => {
-    createMut.mutate(values);
+    if (isEdit) updateMut.mutate(values);
+    else createMut.mutate(values);
   };
+
+  const pending = isEdit ? updateMut.isPending : createMut.isPending;
+  const error = isEdit ? updateMut.isError : createMut.isError;
 
   return (
     <Dialog
-      header="Nuevo Almacén"
+      header={isEdit ? 'Editar Almacén' : 'Nuevo Almacén'}
       visible={visible}
       onHide={() => { reset(); onHide(); }}
       style={{ width: '520px' }}
@@ -178,9 +213,9 @@ export function CreateWarehouseDialog({ visible, onHide }: Props) {
           />
         </div>
 
-        {createMut.isError && (
+        {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-            Error al crear el almacén. Verificá los datos.
+            Error al {isEdit ? 'actualizar' : 'crear'} el almacén. Verificá los datos.
           </p>
         )}
 
@@ -194,9 +229,9 @@ export function CreateWarehouseDialog({ visible, onHide }: Props) {
           />
           <Button
             type="submit"
-            label="Crear Almacén"
+            label={isEdit ? 'Guardar Cambios' : 'Crear Almacén'}
             icon="pi pi-check"
-            loading={createMut.isPending}
+            loading={pending}
             className="bg-[#1b3a5f] text-white border-[#1b3a5f]"
           />
         </div>

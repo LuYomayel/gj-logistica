@@ -55,14 +55,15 @@ export class ContactsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: Partial<UpdateContactDto>,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, user.tenantId);
   }
 
   @Delete(':id')
   @RequiresPermission('contacts.delete')
   @ApiOperation({ summary: 'Desactivar contacto' })
-  deactivate(@Param('id', ParseIntPipe) id: number) {
-    return this.service.deactivate(id);
+  deactivate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.deactivate(id, user.tenantId);
   }
 }

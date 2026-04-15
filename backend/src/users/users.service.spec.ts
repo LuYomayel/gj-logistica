@@ -104,7 +104,7 @@ describe('UsersService', () => {
       userRepo.findOne.mockResolvedValue(user);
       userRepo.save.mockResolvedValue({ ...user, status: 0 });
 
-      const result = await service.deactivate(1);
+      const result = await service.deactivate(1, null);
       expect(result.status).toBe(0);
       expect(userRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 0 }));
     });
@@ -114,7 +114,7 @@ describe('UsersService', () => {
     it('should return memberships for a user', async () => {
       userRepo.findOne.mockResolvedValue(mockUser as User);
       membershipRepo.find.mockResolvedValue([]);
-      const result = await service.getUserGroups(1);
+      const result = await service.getUserGroups(1, null);
       expect(Array.isArray(result)).toBe(true);
     });
   });

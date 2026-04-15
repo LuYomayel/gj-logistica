@@ -52,9 +52,11 @@ export class StockService {
     return { items, total, page, limit };
   }
 
-  async getProductMovements(productId: number): Promise<StockMovement[]> {
+  async getProductMovements(productId: number, tenantId: number | null): Promise<StockMovement[]> {
+    const where: { productId: number; entity?: number } = { productId };
+    if (tenantId !== null) where.entity = tenantId;
     return this.movementRepo.find({
-      where: { productId },
+      where,
       order: { movedAt: 'DESC' },
       take: 100,
     });
@@ -215,7 +217,7 @@ export class StockService {
    * Para futuro: stock_actual - SUM(movimientos con movedAt < X que aún no pasaron...
    * pero como no hay órdenes futuras reales, se usa la misma lógica inversa.
    */
-  async getStockAtDate(dto: StockAtDateDto): Promise<StockAtDateItem[]> {
+  async getStockAtDate(dto: StockAtDateDto, tenantId: number | null): Promise<StockAtDateItem[]> {
     const { date, warehouseId, productId } = dto;
     const targetDate = new Date(date);
 
@@ -239,6 +241,7 @@ export class StockService {
 
     if (warehouseId) qb.andWhere('ps.warehouseId = :warehouseId', { warehouseId });
     if (productId) qb.andWhere('ps.productId = :productId', { productId });
+    if (tenantId !== null) qb.andWhere('p.entity = :tenantId', { tenantId });
 
     qb.groupBy('ps.productId, ps.quantity, p.ref, p.label')
       .orderBy('p.ref', 'ASC');

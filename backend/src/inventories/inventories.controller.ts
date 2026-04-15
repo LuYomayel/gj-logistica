@@ -28,8 +28,11 @@ export class InventoriesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de inventario con líneas' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findOne(id, user.tenantId);
   }
 
   @Post()
@@ -50,7 +53,7 @@ export class InventoriesController {
     @Body() dto: AddInventoryLineDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.addLine(id, dto, user.id);
+    return this.service.addLine(id, dto, user.id, user.tenantId);
   }
 
   @Patch(':id/lines/:lineId')
@@ -60,8 +63,9 @@ export class InventoriesController {
     @Param('id', ParseIntPipe) id: number,
     @Param('lineId', ParseIntPipe) lineId: number,
     @Body() dto: UpdateInventoryLineDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.updateLine(id, lineId, dto);
+    return this.service.updateLine(id, lineId, dto, user.tenantId);
   }
 
   @Delete(':id/lines/:lineId')
@@ -71,8 +75,9 @@ export class InventoriesController {
   removeLine(
     @Param('id', ParseIntPipe) id: number,
     @Param('lineId', ParseIntPipe) lineId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.removeLine(id, lineId);
+    return this.service.removeLine(id, lineId, user.tenantId);
   }
 
   @Post(':id/validate')
@@ -82,21 +87,27 @@ export class InventoriesController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.validate(id, user.id);
+    return this.service.validate(id, user.id, user.tenantId);
   }
 
   @Post(':id/reset')
   @RequiresPermission('stock.write_inventories')
   @ApiOperation({ summary: 'Volver inventario a borrador' })
-  reset(@Param('id', ParseIntPipe) id: number) {
-    return this.service.resetToDraft(id);
+  reset(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.resetToDraft(id, user.tenantId, user.id);
   }
 
   @Delete(':id')
   @RequiresPermission('stock.write_inventories')
   @HttpCode(204)
   @ApiOperation({ summary: 'Eliminar inventario en borrador' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.remove(id, user.tenantId);
   }
 }

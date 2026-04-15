@@ -90,7 +90,7 @@ describe('ContactsService', () => {
       repo.findOne.mockResolvedValue(contact);
       repo.save.mockResolvedValue({ ...contact, status: 0 });
 
-      const result = await service.deactivate(1);
+      const result = await service.deactivate(1, null);
       expect(result.status).toBe(0);
     });
   });

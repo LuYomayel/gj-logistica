@@ -38,30 +38,30 @@ export class ThirdPartiesService {
     return this.repo.save(tp);
   }
 
-  async update(id: number, dto: Partial<UpdateThirdPartyDto>): Promise<ThirdParty> {
-    const tp = await this.findOne(id);
+  async update(id: number, dto: Partial<UpdateThirdPartyDto>, tenantId: number | null): Promise<ThirdParty> {
+    const tp = await this.findOne(id, tenantId);
     Object.assign(tp, dto);
     return this.repo.save(tp);
   }
 
-  async getSalesReps(thirdPartyId: number) {
-    await this.findOne(thirdPartyId);
+  async getSalesReps(thirdPartyId: number, tenantId: number | null) {
+    await this.findOne(thirdPartyId, tenantId);
     return this.salesRepRepo.find({
       where: { thirdPartyId },
       relations: { user: true },
     });
   }
 
-  async addSalesRep(thirdPartyId: number, userId: number): Promise<SalesRepresentative> {
-    await this.findOne(thirdPartyId);
+  async addSalesRep(thirdPartyId: number, userId: number, tenantId: number | null): Promise<SalesRepresentative> {
+    await this.findOne(thirdPartyId, tenantId);
     const existing = await this.salesRepRepo.findOne({ where: { thirdPartyId, userId } });
     if (existing) return existing;
     const rep = this.salesRepRepo.create({ thirdPartyId, userId });
     return this.salesRepRepo.save(rep);
   }
 
-  async removeSalesRep(thirdPartyId: number, userId: number): Promise<void> {
-    await this.findOne(thirdPartyId);
+  async removeSalesRep(thirdPartyId: number, userId: number, tenantId: number | null): Promise<void> {
+    await this.findOne(thirdPartyId, tenantId);
     const rep = await this.salesRepRepo.findOne({ where: { thirdPartyId, userId } });
     if (!rep) throw new NotFoundException('Representante no encontrado');
     await this.salesRepRepo.remove(rep);

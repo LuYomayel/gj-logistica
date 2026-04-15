@@ -2,7 +2,7 @@ import {
   Injectable, NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { FindOptionsWhere, Repository, DataSource } from 'typeorm';
 import { Inventory } from '../entities/inventory.entity';
 import { InventoryLine } from '../entities/inventory-line.entity';
 import { ProductStock } from '../entities/product-stock.entity';
@@ -29,6 +29,18 @@ export class InventoriesService {
     private dataSource: DataSource,
   ) {}
 
+  private async loadInventoryScoped(
+    repo: Repository<Inventory>,
+    id: number,
+    tenantId: number | null,
+  ): Promise<Inventory> {
+    const where: FindOptionsWhere<Inventory> = { id };
+    if (tenantId !== null) where.entity = tenantId;
+    const inv = await repo.findOne({ where });
+    if (!inv) throw new NotFoundException(`Inventario ${id} no encontrado`);
+    return inv;
+  }
+
   async findAll(filter: FilterInventoryDto, tenantId: number | null): Promise<PaginatedInventories> {
     const { warehouseId, status, page = 1, limit = 20 } = filter;
 
@@ -46,20 +58,17 @@ export class InventoriesService {
     return { items, total, page, limit };
   }
 
-  async findOne(id: number): Promise<Inventory & { lines: InventoryLine[] }> {
-    const inventory = await this.inventoryRepo.findOne({ where: { id }, relations: ['warehouse'] });
-    if (!inventory) throw new NotFoundException(`Inventario ${id} no encontrado`);
-
+  async findOne(id: number, tenantId: number | null): Promise<Inventory & { lines: InventoryLine[] }> {
+    const inventory = await this.loadInventoryScoped(this.inventoryRepo, id, tenantId);
+    const full = await this.inventoryRepo.findOne({ where: { id }, relations: ['warehouse'] });
     const lines = await this.lineRepo.find({ where: { inventoryId: id } });
 
-    // Enrich lines with current expected stock
     const enrichedLines = await Promise.all(
       lines.map(async (line) => {
         if (line.warehouseId && line.productId) {
           const ps = await this.stockRepo.findOne({
             where: { warehouseId: line.warehouseId, productId: line.productId },
           });
-          // Expected is the current stock (if not already set)
           if (line.expectedQuantity === null || line.expectedQuantity === undefined) {
             line.expectedQuantity = ps?.quantity ?? 0;
           }
@@ -68,7 +77,7 @@ export class InventoriesService {
       }),
     );
 
-    return { ...inventory, lines: enrichedLines } as Inventory & { lines: InventoryLine[] };
+    return { ...(full ?? inventory), lines: enrichedLines } as Inventory & { lines: InventoryLine[] };
   }
 
   async create(dto: CreateInventoryDto, createdByUserId: number, tenantId: number | null): Promise<Inventory> {
@@ -89,14 +98,13 @@ export class InventoriesService {
     inventoryId: number,
     dto: AddInventoryLineDto,
     createdByUserId: number,
+    tenantId: number | null,
   ): Promise<InventoryLine> {
-    const inventory = await this.inventoryRepo.findOne({ where: { id: inventoryId } });
-    if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+    const inventory = await this.loadInventoryScoped(this.inventoryRepo, inventoryId, tenantId);
     if (inventory.status !== 0) {
       throw new BadRequestException('Solo se pueden agregar líneas a inventarios en borrador');
     }
 
-    // Get current stock as expectedQuantity
     const ps = await this.stockRepo.findOne({
       where: { warehouseId: dto.warehouseId, productId: dto.productId },
     });
@@ -116,9 +124,9 @@ export class InventoriesService {
     inventoryId: number,
     lineId: number,
     dto: UpdateInventoryLineDto,
+    tenantId: number | null,
   ): Promise<InventoryLine> {
-    const inventory = await this.inventoryRepo.findOne({ where: { id: inventoryId } });
-    if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+    const inventory = await this.loadInventoryScoped(this.inventoryRepo, inventoryId, tenantId);
     if (inventory.status !== 0) {
       throw new BadRequestException('No se puede modificar un inventario ya validado');
     }
@@ -130,9 +138,8 @@ export class InventoriesService {
     return this.lineRepo.save(line);
   }
 
-  async removeLine(inventoryId: number, lineId: number): Promise<void> {
-    const inventory = await this.inventoryRepo.findOne({ where: { id: inventoryId } });
-    if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+  async removeLine(inventoryId: number, lineId: number, tenantId: number | null): Promise<void> {
+    const inventory = await this.loadInventoryScoped(this.inventoryRepo, inventoryId, tenantId);
     if (inventory.status !== 0) {
       throw new BadRequestException('No se puede modificar un inventario ya validado');
     }
@@ -143,12 +150,7 @@ export class InventoriesService {
     await this.lineRepo.remove(line);
   }
 
-  /**
-   * Valida el inventario: genera movimientos de stock para cada diferencia
-   * (realQuantity - expectedQuantity) y cierra el inventario.
-   * Todo en una sola transacción atómica.
-   */
-  async validate(inventoryId: number, userId: number): Promise<Inventory> {
+  async validate(inventoryId: number, userId: number, tenantId: number | null): Promise<Inventory> {
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
@@ -160,8 +162,7 @@ export class InventoriesService {
       const movRepo = qr.manager.getRepository(StockMovement);
       const productRepo = qr.manager.getRepository(Product);
 
-      const inventory = await invRepo.findOne({ where: { id: inventoryId } });
-      if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+      const inventory = await this.loadInventoryScoped(invRepo, inventoryId, tenantId);
       if (inventory.status !== 0) {
         throw new BadRequestException('El inventario ya fue validado');
       }
@@ -172,7 +173,6 @@ export class InventoriesService {
         if (line.productId === null || line.warehouseId === null) continue;
         if (line.realQuantity === null) continue;
 
-        // Get current stock to compute expected
         const ps = await stockRepo.findOne({
           where: { warehouseId: line.warehouseId, productId: line.productId },
         });
@@ -181,7 +181,6 @@ export class InventoriesService {
 
         if (delta === 0) continue;
 
-        // Update product_stocks
         if (ps) {
           ps.quantity = line.realQuantity!;
           await stockRepo.save(ps);
@@ -195,12 +194,10 @@ export class InventoriesService {
           );
         }
 
-        // Update product.stock mirror
         if (delta !== 0) {
           await productRepo.increment({ id: line.productId }, 'stock', delta);
         }
 
-        // Create stock movement (type=3: inventario)
         await movRepo.save(
           movRepo.create({
             warehouseId: line.warehouseId,
@@ -216,12 +213,10 @@ export class InventoriesService {
           }),
         );
 
-        // Update expected quantity in line record
         line.expectedQuantity = expected;
         await lineRepo.save(line);
       }
 
-      // Mark inventory as validated
       await invRepo.update(inventoryId, { status: 1 });
 
       await qr.commitTransaction();
@@ -235,45 +230,32 @@ export class InventoriesService {
     }
   }
 
-  /**
-   * Resets a validated inventory back to draft.
-   * MUST revert all stock changes made during validate():
-   * - Reverse ProductStock quantities
-   * - Reverse Product.stock mirror
-   * - Create reverse StockMovement entries (negative of original delta)
-   * All inside a transaction.
-   */
-  async resetToDraft(inventoryId: number, userId?: number): Promise<Inventory> {
+  async resetToDraft(inventoryId: number, tenantId: number | null, userId?: number): Promise<Inventory> {
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
 
     try {
       const invRepo = qr.manager.getRepository(Inventory);
-      const lineRepo = qr.manager.getRepository(InventoryLine);
       const stockRepo = qr.manager.getRepository(ProductStock);
       const movRepo = qr.manager.getRepository(StockMovement);
       const productRepo = qr.manager.getRepository(Product);
 
-      const inventory = await invRepo.findOne({ where: { id: inventoryId } });
-      if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+      const inventory = await this.loadInventoryScoped(invRepo, inventoryId, tenantId);
       if (inventory.status !== 1) {
         throw new BadRequestException('Solo se pueden resetear inventarios validados');
       }
 
-      // Find the stock movements created during validate() for this inventory
       const movements = await movRepo.find({
         where: { originType: 'inventory', originId: inventoryId },
       });
 
-      // Reverse each movement
       for (const mov of movements) {
         if (mov.productId === null || mov.warehouseId === null) continue;
 
         const reverseDelta = -(mov.quantity ?? 0);
         if (reverseDelta === 0) continue;
 
-        // Revert ProductStock
         const ps = await stockRepo.findOne({
           where: { warehouseId: mov.warehouseId, productId: mov.productId },
         });
@@ -282,10 +264,8 @@ export class InventoriesService {
           await stockRepo.save(ps);
         }
 
-        // Revert Product.stock mirror
         await productRepo.increment({ id: mov.productId }, 'stock', reverseDelta);
 
-        // Create reverse StockMovement
         await movRepo.save(
           movRepo.create({
             warehouseId: mov.warehouseId,
@@ -302,7 +282,6 @@ export class InventoriesService {
         );
       }
 
-      // Reset status to draft
       await invRepo.update(inventoryId, { status: 0 });
 
       await qr.commitTransaction();
@@ -316,9 +295,8 @@ export class InventoriesService {
     }
   }
 
-  async remove(inventoryId: number): Promise<void> {
-    const inventory = await this.inventoryRepo.findOne({ where: { id: inventoryId } });
-    if (!inventory) throw new NotFoundException(`Inventario ${inventoryId} no encontrado`);
+  async remove(inventoryId: number, tenantId: number | null): Promise<void> {
+    const inventory = await this.loadInventoryScoped(this.inventoryRepo, inventoryId, tenantId);
     if (inventory.status !== 0) {
       throw new BadRequestException('Solo se pueden eliminar inventarios en borrador');
     }

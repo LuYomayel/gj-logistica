@@ -6,6 +6,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { GroupsService, UpdateGroupDto } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('groups')
 @ApiBearerAuth()
@@ -15,34 +17,42 @@ export class GroupsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar grupos' })
-  findAll() {
-    return this.groupsService.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser) {
+    return this.groupsService.findAll(user.tenantId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Detalle de grupo' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.groupsService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.groupsService.findOne(id, user.tenantId);
   }
 
   @Post()
   @Roles('admin')
   @ApiOperation({ summary: 'Crear grupo' })
-  create(@Body() dto: CreateGroupDto) {
-    return this.groupsService.create(dto);
+  create(
+    @Body() dto: CreateGroupDto & { tenantId?: number },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const { tenantId, ...rest } = dto;
+    return this.groupsService.create(rest as CreateGroupDto, user.tenantId, user.userType, tenantId);
   }
 
   @Patch(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'Actualizar grupo' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<UpdateGroupDto>) {
-    return this.groupsService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: Partial<UpdateGroupDto>,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.groupsService.update(id, dto, user.tenantId);
   }
 
   @Get(':id/members')
   @ApiOperation({ summary: 'Miembros del grupo' })
-  getMembers(@Param('id', ParseIntPipe) id: number) {
-    return this.groupsService.getMembers(id);
+  getMembers(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.groupsService.getMembers(id, user.tenantId);
   }
 
   @Post(':id/members')
@@ -51,8 +61,9 @@ export class GroupsController {
   addMember(
     @Param('id', ParseIntPipe) id: number,
     @Body('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.groupsService.addMember(id, userId);
+    return this.groupsService.addMember(id, userId, user.tenantId);
   }
 
   @Delete(':id/members/:userId')
@@ -61,7 +72,8 @@ export class GroupsController {
   removeMember(
     @Param('id', ParseIntPipe) id: number,
     @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.groupsService.removeMember(id, userId);
+    return this.groupsService.removeMember(id, userId, user.tenantId);
   }
 }

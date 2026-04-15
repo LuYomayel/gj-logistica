@@ -27,8 +27,8 @@ export class UsersController {
   @Get(':id')
   @RequiresPermission('users.read')
   @ApiOperation({ summary: 'Detalle de usuario' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.findOne(id, user.tenantId);
   }
 
   @Post()
@@ -55,15 +55,15 @@ export class UsersController {
   @Delete(':id')
   @RequiresPermission('users.delete')
   @ApiOperation({ summary: 'Desactivar usuario' })
-  deactivate(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.deactivate(id);
+  deactivate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.deactivate(id, user.tenantId);
   }
 
   @Patch(':id/activate')
   @RequiresPermission('users.write')
   @ApiOperation({ summary: 'Reactivar usuario desactivado' })
-  activate(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.activate(id);
+  activate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.activate(id, user.tenantId);
   }
 
   @Patch(':id/change-password')
@@ -79,7 +79,7 @@ export class UsersController {
   @Get(':id/groups')
   @RequiresPermission('users.read')
   @ApiOperation({ summary: 'Grupos del usuario' })
-  getUserGroups(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.getUserGroups(id);
+  getUserGroups(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.getUserGroups(id, user.tenantId);
   }
 }

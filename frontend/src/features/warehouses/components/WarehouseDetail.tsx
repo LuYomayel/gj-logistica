@@ -11,7 +11,9 @@ import { useState } from 'react';
 import { warehousesApi } from '../api/warehousesApi';
 import { stockApi } from '../../stock/api/stockApi';
 import { StockCorrectionDialog } from './StockCorrectionDialog';
+import { CreateWarehouseDialog } from './CreateWarehouseDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { canManageTenants } from '../../../shared/hooks/useTenants';
 import type { ProductStock, StockMovement } from '../../../shared/types';
 
 interface InfoRowProps { label: string; value: string | number | null | undefined }
@@ -28,10 +30,12 @@ interface Props { id: number }
 
 export function WarehouseDetail({ id }: Props) {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
   const [stockSearch, setStockSearch] = useState('');
   const [movPage, setMovPage] = useState(1);
   const [showCorrection, setShowCorrection] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [correctionProduct, setCorrectionProduct] = useState<
     { id: number; ref: string; label: string | null } | undefined
   >(undefined);
@@ -100,6 +104,12 @@ export function WarehouseDetail({ id }: Props) {
         preselectedProduct={correctionProduct}
       />
 
+      <CreateWarehouseDialog
+        visible={showEdit}
+        onHide={() => setShowEdit(false)}
+        warehouse={warehouse}
+      />
+
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -121,8 +131,17 @@ export function WarehouseDetail({ id }: Props) {
               severity={warehouse.status === 1 ? 'success' : 'danger'}
             />
           </div>
-          {hasPermission('stock.write_movements') && (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            {hasPermission('stock.write_warehouses') && (
+              <Button
+                label="Editar"
+                icon="pi pi-pencil"
+                outlined
+                onClick={() => setShowEdit(true)}
+                className="px-4 py-2"
+              />
+            )}
+            {hasPermission('stock.write_movements') && (
               <Button
                 label="Corrección Stock"
                 icon="pi pi-sliders-h"
@@ -131,8 +150,8 @@ export function WarehouseDetail({ id }: Props) {
                 onClick={() => { setCorrectionProduct(undefined); setShowCorrection(true); }}
                 className="px-4 py-2"
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Info + stats */}
@@ -144,6 +163,9 @@ export function WarehouseDetail({ id }: Props) {
               </h3>
               <InfoRow label="Nombre" value={warehouse.name} />
               <InfoRow label="Nombre corto" value={warehouse.shortName} />
+              {isSuperAdmin && (
+                <InfoRow label="Organización" value={warehouse.tenant?.name ?? (warehouse.entity !== undefined ? `#${warehouse.entity}` : '-')} />
+              )}
               <InfoRow label="Descripción" value={warehouse.description} />
               <InfoRow label="Dirección" value={warehouse.address} />
               <InfoRow label="Ubicación" value={warehouse.location} />
