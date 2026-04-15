@@ -109,9 +109,6 @@ export function ContactDetail({ id }: Props) {
               value={contact.status === 1 ? 'Activo' : 'Inactivo'}
               severity={contact.status === 1 ? 'success' : 'danger'}
             />
-            {contact.thirdParty && (
-              <Tag value={contact.thirdParty.name} severity="info" icon="pi pi-building" />
-            )}
           </div>
         </div>
 

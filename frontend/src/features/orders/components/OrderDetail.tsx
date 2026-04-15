@@ -242,8 +242,7 @@ export function OrderDetail({ id }: Props) {
               <StatusBadge status={order.status} />
             </div>
             <p className="text-sm text-gray-500 ml-8">
-              {order.thirdParty?.name ?? 'Sin tercero'}
-              {order.clientRef ? ` · Ref cliente: ${order.clientRef}` : ''}
+              {order.clientRef ? `Ref cliente: ${order.clientRef}` : ''}
             </p>
           </div>
 
@@ -355,7 +354,6 @@ export function OrderDetail({ id }: Props) {
               </h3>
               <InfoRow label="Referencia" value={order.ref} />
               <InfoRow label="Ref cliente" value={order.clientRef} />
-              <InfoRow label="Tercero" value={order.thirdParty?.name} />
               <InfoRow label="Fecha pedido" value={formatDate(order.orderDate)} />
               <InfoRow label="Fecha prevista" value={formatDate(order.deliveryDate)} />
               <InfoRow label="Fecha validación" value={formatDate(order.validatedAt)} />

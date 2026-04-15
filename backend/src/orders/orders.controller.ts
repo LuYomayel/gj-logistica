@@ -89,7 +89,7 @@ export class OrdersController {
     @Body() dto: CreateOrderDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.create(dto, user.id, user.tenantId);
+    return this.service.create(dto, user.id, user.tenantId, user.userType);
   }
 
   @Patch(':id')

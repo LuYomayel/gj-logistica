@@ -10,9 +10,9 @@ import { Calendar } from "primereact/calendar";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Toast } from "primereact/toast";
 import { ordersApi, type CreateOrderPayload } from "../api/ordersApi";
-import { thirdPartiesApi } from "../../third-parties/api/thirdPartiesApi";
 import { warehousesApi } from "../../warehouses/api/warehousesApi";
-import { contactsApi } from "../../contacts/api/contactsApi";
+import { useAuth } from "../../../shared/hooks/useAuth";
+import { useTenants, canManageTenants } from "../../../shared/hooks/useTenants";
 import { apiErrMsg } from "../../../shared/utils/apiErrMsg";
 
 interface Props {
@@ -21,18 +21,19 @@ interface Props {
 }
 
 interface FormValues {
-  thirdPartyId: number | null;
+  tenantId: number | null;
   warehouseId: number | null;
   clientRef: string;
   orderDate: Date | null;
   deliveryDate: Date | null;
-  contactId: number | null;
   publicNote: string;
 }
 
 export function CreateOrderDialog({ visible, onHide }: Props) {
   const navigate = useNavigate();
   const toast = useRef<Toast>(null);
+  const { user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
 
   const {
     control,
@@ -41,64 +42,41 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
-      thirdPartyId: null,
+      tenantId: null,
       warehouseId: null,
       clientRef: "",
       orderDate: new Date(),
       deliveryDate: null,
-      contactId: null,
       publicNote: "",
     },
   });
 
-  // Reset form when dialog opens
   useEffect(() => {
     if (visible) {
       reset({
-        thirdPartyId: null,
+        tenantId: null,
         warehouseId: null,
         clientRef: "",
         orderDate: new Date(),
         deliveryDate: null,
-        contactId: null,
         publicNote: "",
       });
     }
   }, [visible, reset]);
 
-  // Load third parties
-  const { data: tpData } = useQuery({
-    queryKey: ["third-parties", "all"],
-    queryFn: () => thirdPartiesApi.list({ limit: 200 }),
-    enabled: visible,
-  });
+  // Load tenants (solo super_admin)
+  const { data: tenantsData } = useTenants();
+  const tenantOptions = (tenantsData ?? []).map((t) => ({
+    label: t.name,
+    value: t.id,
+  }));
 
-  // Load warehouses
+  // Load warehouses del tenant del usuario (o todos si super_admin)
   const { data: whData } = useQuery({
     queryKey: ["warehouses", "all"],
     queryFn: () => warehousesApi.list(),
     enabled: visible,
   });
-
-  // Load contacts
-  const { data: contactsData } = useQuery({
-    queryKey: ["contacts", "all"],
-    queryFn: () => contactsApi.list({ limit: 200 }),
-    enabled: visible,
-  });
-
-  const contactOptions = [
-    { label: "— Sin contacto —", value: null },
-    ...(contactsData?.data ?? []).map((c) => ({
-      label: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || c.alias || `#${c.id}`,
-      value: c.id,
-    })),
-  ];
-
-  const thirdPartyOptions = (tpData?.data ?? []).map((tp) => ({
-    label: tp.name,
-    value: tp.id,
-  }));
 
   const warehouseOptions = [
     { label: "— Sin almacén —", value: null },
@@ -108,21 +86,9 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
     })),
   ];
 
-  // Track selected contactId for post-creation assignment
-  const pendingContactId = useRef<number | null>(null);
-
   const createMut = useMutation({
     mutationFn: (payload: CreateOrderPayload) => ordersApi.create(payload),
-    onSuccess: async (order) => {
-      // Assign contact if one was selected
-      if (pendingContactId.current) {
-        try {
-          await ordersApi.assignContact(order.id, pendingContactId.current);
-        } catch {
-          // Non-blocking: order created, contact assignment failed silently
-        }
-        pendingContactId.current = null;
-      }
+    onSuccess: (order) => {
       toast.current?.show({
         severity: "success",
         summary: "Pedido creado",
@@ -143,12 +109,9 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
   });
 
   const onSubmit = (values: FormValues) => {
-    if (!values.thirdPartyId) return;
-
-    pendingContactId.current = values.contactId;
+    if (isSuperAdmin && !values.tenantId) return;
 
     const payload: CreateOrderPayload = {
-      thirdPartyId: values.thirdPartyId,
       warehouseId: values.warehouseId ?? undefined,
       clientRef: values.clientRef || undefined,
       orderDate: values.orderDate ? values.orderDate.toISOString() : undefined,
@@ -157,6 +120,9 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
         : undefined,
       publicNote: values.publicNote || undefined,
     };
+    if (isSuperAdmin && values.tenantId) {
+      payload.tenantId = values.tenantId;
+    }
 
     createMut.mutate(payload);
   };
@@ -176,7 +142,6 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
         icon="pi pi-plus"
         loading={createMut.isPending}
         onClick={() => void handleSubmit(onSubmit)()}
-        className=""
       />
     </div>
   );
@@ -198,32 +163,34 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
           onSubmit={(e) => e.preventDefault()}
           className="flex flex-col gap-4 pt-2"
         >
-          {/* Cliente (required) */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">
-              Cliente <span className="text-red-500">*</span>
-            </label>
-            <Controller
-              name="thirdPartyId"
-              control={control}
-              rules={{ required: "El cliente es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  {...field}
-                  options={thirdPartyOptions}
-                  filter
-                  filterPlaceholder="Buscar cliente..."
-                  placeholder="Seleccionar cliente"
-                  className={`w-full text-sm ${errors.thirdPartyId ? "p-invalid" : ""}`}
-                />
+          {/* Organización — solo super_admin */}
+          {isSuperAdmin && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">
+                Organización <span className="text-red-500">*</span>
+              </label>
+              <Controller
+                name="tenantId"
+                control={control}
+                rules={{ required: "La organización es obligatoria" }}
+                render={({ field }) => (
+                  <Dropdown
+                    {...field}
+                    options={tenantOptions}
+                    filter
+                    filterPlaceholder="Buscar organización..."
+                    placeholder="Seleccionar organización"
+                    className={`w-full text-sm ${errors.tenantId ? "p-invalid" : ""}`}
+                  />
+                )}
+              />
+              {errors.tenantId && (
+                <span className="text-xs text-red-500">
+                  {errors.tenantId.message}
+                </span>
               )}
-            />
-            {errors.thirdPartyId && (
-              <span className="text-xs text-red-500">
-                {errors.thirdPartyId.message}
-              </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Ref. cliente */}
           <div className="flex flex-col gap-1">
@@ -236,7 +203,7 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
               render={({ field }) => (
                 <InputText
                   {...field}
-                  placeholder="Ej: Virginia Barbuy"
+                  placeholder="Referencia externa"
                   className="w-full text-sm"
                 />
               )}
@@ -296,25 +263,6 @@ export function CreateOrderDialog({ visible, onHide }: Props) {
                   {...field}
                   options={warehouseOptions}
                   placeholder="Sin almacén"
-                  className="w-full text-sm"
-                />
-              )}
-            />
-          </div>
-
-          {/* Contacto */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Contacto</label>
-            <Controller
-              name="contactId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  {...field}
-                  options={contactOptions}
-                  filter
-                  filterPlaceholder="Buscar contacto..."
-                  placeholder="Sin contacto"
                   className="w-full text-sm"
                 />
               )}

@@ -3,11 +3,9 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
-import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { contactsApi, type CreateContactPayload } from '../api/contactsApi';
-import { thirdPartiesApi } from '../../third-parties/api/thirdPartiesApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import type { Contact } from '../../../shared/types';
 
@@ -58,18 +56,6 @@ export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     defaultValues: emptyValues,
   });
-
-  // Load third parties for dropdown
-  const { data: tpData } = useQuery({
-    queryKey: ['third-parties', { limit: 500 }],
-    queryFn: () => thirdPartiesApi.list({ limit: 500 }),
-    enabled: visible,
-  });
-
-  const tpOptions = (tpData?.data ?? []).map((tp) => ({
-    label: tp.name,
-    value: tp.id,
-  }));
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -218,28 +204,9 @@ export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) 
           </div>
         </div>
 
-        {/* Tercero y marca */}
+        {/* Marca */}
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Asociación</p>
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Tercero</label>
-              <Controller
-                name="thirdPartyId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    value={field.value}
-                    options={tpOptions}
-                    onChange={(e) => field.onChange(e.value)}
-                    placeholder="Seleccionar tercero..."
-                    showClear
-                    filter
-                    className="w-full"
-                  />
-                )}
-              />
-            </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Marca</label>
               <InputText

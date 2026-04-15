@@ -26,8 +26,8 @@ const SECTIONS: TopNavSection[] = [
     label: 'Comercial',
     icon: 'pi pi-briefcase',
     to: '/orders',
-    matchPrefixes: ['/orders', '/third-parties', '/contacts'],
-    permissions: ['orders.read', 'third_parties.read', 'contacts.read'],
+    matchPrefixes: ['/orders', '/contacts'],
+    permissions: ['orders.read', 'contacts.read'],
   },
   {
     label: 'Almacén',

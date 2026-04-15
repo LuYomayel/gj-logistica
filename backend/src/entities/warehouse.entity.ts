@@ -2,6 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn,
 } from 'typeorm';
+import { Tenant } from './tenant.entity';
 
 @Entity('warehouses')
 export class Warehouse {
@@ -78,4 +79,8 @@ export class Warehouse {
 
   @OneToMany('Inventory', 'warehouse')
   inventories: unknown[];
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'entity' })
+  tenant: Tenant | null;
 }

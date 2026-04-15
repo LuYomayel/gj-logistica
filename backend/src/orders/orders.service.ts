@@ -51,11 +51,12 @@ export class OrdersService {
   ) {}
 
   async findAll(filter: FilterOrderDto, tenantId: number | null): Promise<PaginatedOrders> {
-    const { status, thirdPartyId, warehouseId, isDraft, ref, clientRef, dateFrom, dateTo, page = 1, limit = 50 } = filter;
+    const { status, thirdPartyId, warehouseId, isDraft, ref, clientRef, dateFrom, dateTo, tenantId: filterTenantId, page = 1, limit = 50 } = filter;
 
     const qb = this.orderRepo
       .createQueryBuilder('o')
       .leftJoinAndSelect('o.thirdParty', 'tp')
+      .leftJoinAndSelect('o.tenant', 'tn')
       .leftJoinAndSelect('o.createdBy', 'cb')
       .orderBy('o.createdAt', 'DESC')
       .skip((page - 1) * limit)
@@ -69,7 +70,12 @@ export class OrdersService {
     if (clientRef) qb.andWhere('o.clientRef LIKE :clientRef', { clientRef: `%${clientRef}%` });
     if (dateFrom) qb.andWhere('o.orderDate >= :dateFrom', { dateFrom });
     if (dateTo) qb.andWhere('o.orderDate <= :dateTo', { dateTo });
-    if (tenantId !== null) qb.andWhere('o.entity = :tenantId', { tenantId });
+    if (tenantId !== null) {
+      qb.andWhere('o.entity = :tenantId', { tenantId });
+    } else if (filterTenantId) {
+      // super_admin puede filtrar por tenant vía query param
+      qb.andWhere('o.entity = :filterTenantId', { filterTenantId });
+    }
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit };
@@ -80,14 +86,37 @@ export class OrdersService {
     if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
     const order = await this.orderRepo.findOne({
       where,
-      relations: ['thirdParty', 'lines', 'lines.product', 'warehouse', 'createdBy', 'validatedBy'],
+      relations: ['thirdParty', 'tenant', 'lines', 'lines.product', 'warehouse', 'createdBy', 'validatedBy'],
     });
     if (!order) throw new NotFoundException(`Pedido #${id} no encontrado`);
     return order;
   }
 
-  async create(dto: CreateOrderDto, createdByUserId: number, tenantId: number | null): Promise<Order> {
-    const { lines, ...orderData } = dto;
+  async create(
+    dto: CreateOrderDto,
+    createdByUserId: number,
+    userTenantId: number | null,
+    userType: 'super_admin' | 'client_admin' | 'client_user',
+  ): Promise<Order> {
+    const { lines, tenantId: dtoTenantId, ...orderData } = dto;
+
+    // Resolver tenant dueño del pedido:
+    // - super_admin: el body DEBE traer tenantId explícito.
+    // - resto: se autoasigna al tenant del usuario; ignoramos cualquier tenantId del body.
+    let entity: number;
+    if (userType === 'super_admin') {
+      if (!dtoTenantId) {
+        throw new BadRequestException(
+          'Como super_admin debe indicar la organización (tenantId) a la que pertenece el pedido',
+        );
+      }
+      entity = dtoTenantId;
+    } else {
+      if (userTenantId == null) {
+        throw new BadRequestException('El usuario no tiene una organización asignada');
+      }
+      entity = userTenantId;
+    }
 
     // Save with a temporary unique ref; will be replaced on validate
     const tempRef = `BORD${Date.now()}${Math.floor(Math.random() * 9999)}`;
@@ -99,7 +128,7 @@ export class OrdersService {
         isDraft: true,
         createdByUserId,
         orderDate: dto.orderDate ?? new Date(),
-        entity: tenantId ?? 1,
+        entity,
       }),
     );
 
@@ -419,10 +448,15 @@ export class OrdersService {
   async cloneOrder(id: number, createdByUserId: number, tenantId: number | null): Promise<Order> {
     const original = await this.findOne(id);
 
+    // Clonar dentro del mismo tenant del pedido original.
+    // tenantId del caller solo se usa para validar que ve ese pedido (ya lo hizo findOne).
+    const entity = original.entity;
+    void tenantId;
+
     const tempRef = `BORD${Date.now()}${Math.floor(Math.random() * 9999)}`;
     const newOrder = await this.orderRepo.save(
       this.orderRepo.create({
-        thirdPartyId: original.thirdPartyId,
+        thirdPartyId: original.thirdPartyId ?? undefined,
         warehouseId: original.warehouseId ?? undefined,
         clientRef: original.clientRef ?? undefined,
         publicNote: original.publicNote ?? undefined,
@@ -434,7 +468,7 @@ export class OrdersService {
         isDraft: true,
         createdByUserId,
         orderDate: new Date(),
-        entity: tenantId ?? 1,
+        entity,
       }),
     );
     await this.orderRepo.update(newOrder.id, { ref: `BORRADOR-${newOrder.id}` });

@@ -165,7 +165,12 @@ describe('OrdersService', () => {
       mockOrderRepoModule.save.mockResolvedValue(savedOrder);
       mockOrderRepoModule.findOne.mockResolvedValue(savedOrder);
 
-      const result = await service.create({ thirdPartyId: 10, warehouseId: 1 }, 1, null);
+      const result = await service.create(
+        { warehouseId: 1 },
+        1,
+        7,
+        'client_user',
+      );
       expect(mockOrderRepoModule.save).toHaveBeenCalled();
       expect(mockOrderRepoModule.update).toHaveBeenCalledWith(5, { ref: 'BORRADOR-5' });
       expect(result.status).toBe(0);
@@ -177,11 +182,39 @@ describe('OrdersService', () => {
       mockOrderRepoModule.findOne.mockResolvedValue(savedOrder);
 
       await service.create(
-        { thirdPartyId: 10, lines: [{ productId: 1, quantity: 3 }] },
+        { lines: [{ productId: 1, quantity: 3 }] },
         1,
-        null,
+        7,
+        'client_user',
       );
       expect(mockLineRepoModule.save).toHaveBeenCalled();
+    });
+
+    it('requires tenantId in body when caller is super_admin', async () => {
+      await expect(
+        service.create({ warehouseId: 1 }, 1, null, 'super_admin'),
+      ).rejects.toThrow(/organización/i);
+    });
+
+    it('auto-assigns entity from user tenant for non-super-admin', async () => {
+      const savedOrder = makeOrder({ id: 9, entity: 42 });
+      mockOrderRepoModule.save.mockResolvedValue(savedOrder);
+      mockOrderRepoModule.findOne.mockResolvedValue(savedOrder);
+
+      await service.create({ warehouseId: 1 }, 1, 42, 'client_user');
+
+      const saveArgs = mockOrderRepoModule.save.mock.calls[0][0];
+      expect(saveArgs.entity).toBe(42);
+    });
+
+    it('uses body tenantId when caller is super_admin', async () => {
+      const savedOrder = makeOrder({ id: 10, entity: 3 });
+      mockOrderRepoModule.save.mockResolvedValue(savedOrder);
+      mockOrderRepoModule.findOne.mockResolvedValue(savedOrder);
+
+      await service.create({ tenantId: 3, warehouseId: 1 }, 1, null, 'super_admin');
+      const saveArgs = mockOrderRepoModule.save.mock.calls[0][0];
+      expect(saveArgs.entity).toBe(3);
     });
   });
 

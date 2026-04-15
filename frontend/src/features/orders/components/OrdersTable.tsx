@@ -11,11 +11,11 @@ import { Button } from "primereact/button";
 import { Skeleton } from "primereact/skeleton";
 import { Tooltip } from "primereact/tooltip";
 import { ordersApi, type OrderFilters } from "../api/ordersApi";
-import { thirdPartiesApi } from "../../third-parties/api/thirdPartiesApi";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { CreateOrderDialog } from "./CreateOrderDialog";
 import { ExportOrdersDialog } from "./ExportOrdersDialog";
 import { useAuth } from "../../../shared/hooks/useAuth";
+import { useTenants, canManageTenants } from "../../../shared/hooks/useTenants";
 import type { Order } from "../../../shared/types";
 
 const STATUS_OPTIONS = [
@@ -29,11 +29,12 @@ const STATUS_OPTIONS = [
 
 export function OrdersTable() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
   const [filters, setFilters] = useState<OrderFilters>({ page: 1, limit: 20 });
   const [refInput, setRefInput] = useState("");
   const [statusInput, setStatusInput] = useState<number | string>("");
-  const [thirdPartyInput, setThirdPartyInput] = useState<number | null>(null);
+  const [tenantInput, setTenantInput] = useState<number | null>(null);
   const [dateFromInput, setDateFromInput] = useState<Date | null>(null);
   const [dateToInput, setDateToInput] = useState<Date | null>(null);
   const [clientRefInput, setClientRefInput] = useState("");
@@ -45,15 +46,10 @@ export function OrdersTable() {
     queryFn: () => ordersApi.list(filters),
   });
 
-  // Load third parties for filter dropdown
-  const { data: tpData } = useQuery({
-    queryKey: ["third-parties", { limit: 500 }],
-    queryFn: () => thirdPartiesApi.list({ limit: 500 }),
-  });
-
-  const tpOptions = [
-    { label: "Todos", value: null },
-    ...(tpData?.data ?? []).map((tp) => ({ label: tp.name, value: tp.id })),
+  const { data: tenants } = useTenants();
+  const tenantOptions = [
+    { label: "Todas", value: null },
+    ...((tenants ?? []).map((t) => ({ label: t.name, value: t.id }))),
   ];
 
   const orders = data?.data ?? [];
@@ -65,7 +61,7 @@ export function OrdersTable() {
       limit: 20,
       ref: refInput || undefined,
       status: statusInput !== "" ? statusInput : undefined,
-      thirdPartyId: thirdPartyInput ?? undefined,
+      tenantId: isSuperAdmin && tenantInput ? tenantInput : undefined,
       clientRef: clientRefInput || undefined,
       dateFrom: dateFromInput ? dateFromInput.toISOString().split("T")[0] : undefined,
       dateTo: dateToInput ? dateToInput.toISOString().split("T")[0] : undefined,
@@ -75,7 +71,7 @@ export function OrdersTable() {
   const clearFilters = () => {
     setRefInput("");
     setStatusInput("");
-    setThirdPartyInput(null);
+    setTenantInput(null);
     setDateFromInput(null);
     setDateToInput(null);
     setClientRefInput("");
@@ -156,17 +152,19 @@ export function OrdersTable() {
               className="text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1 min-w-[180px]">
-            <label className="text-xs font-medium text-gray-600">Tercero</label>
-            <Dropdown
-              value={thirdPartyInput}
-              options={tpOptions}
-              onChange={(e) => setThirdPartyInput(e.value)}
-              placeholder="Todos"
-              filter
-              className="text-sm"
-            />
-          </div>
+          {isSuperAdmin && (
+            <div className="flex flex-col gap-1 min-w-[180px]">
+              <label className="text-xs font-medium text-gray-600">Organización</label>
+              <Dropdown
+                value={tenantInput}
+                options={tenantOptions}
+                onChange={(e) => setTenantInput(e.value)}
+                placeholder="Todas"
+                filter
+                className="text-sm"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1 min-w-[130px]">
             <label className="text-xs font-medium text-gray-600">Ref cliente</label>
             <InputText
@@ -245,11 +243,13 @@ export function OrdersTable() {
             style={{ width: "120px" }}
             body={(row: Order) => row.clientRef ?? "-"}
           />
-          <Column
-            field="thirdParty.name"
-            header="Tercero"
-            body={(row: Order) => row.thirdParty?.name ?? "-"}
-          />
+          {isSuperAdmin && (
+            <Column
+              field="tenant.name"
+              header="Organización"
+              body={(row: Order) => row.tenant?.name ?? `#${row.entity}`}
+            />
+          )}
           <Column
             field="orderDate"
             header="Fecha"

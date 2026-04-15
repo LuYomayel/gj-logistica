@@ -76,4 +76,11 @@ export class FilterOrderDto {
   @IsOptional()
   @Type(() => Number)
   limit?: number = 50;
+
+  /** Solo respetado cuando el caller es super_admin; para los demás se ignora. */
+  @ApiPropertyOptional({ description: 'Filtrar por organización (solo super_admin)' })
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  tenantId?: number;
 }

@@ -158,12 +158,6 @@ export function ContactsTable() {
             body={(row: Contact) => row.phonePro ?? '-'}
           />
           <Column
-            field="thirdParty.name"
-            header="Tercero"
-            style={{ width: '150px' }}
-            body={(row: Contact) => row.thirdParty?.name ?? '-'}
-          />
-          <Column
             field="marca"
             header="Marca"
             style={{ width: '120px' }}

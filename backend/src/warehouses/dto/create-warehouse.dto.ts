@@ -77,4 +77,10 @@ export class CreateWarehouseDto {
   @IsOptional()
   @Type(() => Number)
   status?: number;
+
+  @ApiPropertyOptional({ description: 'Organización dueña del almacén. Solo super_admin puede setearlo.' })
+  @IsInt({ message: 'El ID de la organización debe ser un entero' })
+  @IsOptional()
+  @Type(() => Number)
+  tenantId?: number;
 }

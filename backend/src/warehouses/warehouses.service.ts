@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Warehouse } from '../entities/warehouse.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 
 export class UpdateWarehouseDto extends CreateWarehouseDto {}
+
+type UserType = 'super_admin' | 'client_admin' | 'client_user';
 
 @Injectable()
 export class WarehousesService {
@@ -14,35 +16,83 @@ export class WarehousesService {
     @InjectRepository(ProductStock) private stockRepo: Repository<ProductStock>,
   ) {}
 
-  async findAll(tenantId: number | null): Promise<Warehouse[]> {
-    return this.repo.find({
-      where: {
-        status: 1,
-        ...(tenantId !== null && { entity: tenantId }),
-      },
-      order: { name: 'ASC' },
-    });
+  async findAll(
+    tenantId: number | null,
+    filterTenantId?: number,
+  ): Promise<Warehouse[]> {
+    const where: FindOptionsWhere<Warehouse> = { status: 1 };
+    if (tenantId !== null) {
+      where.entity = tenantId;
+    } else if (filterTenantId) {
+      // super_admin puede filtrar por tenant opcionalmente
+      where.entity = filterTenantId;
+    }
+    return this.repo.find({ where, relations: { tenant: true }, order: { name: 'ASC' } });
   }
 
-  async findOne(id: number): Promise<Warehouse> {
-    const wh = await this.repo.findOne({ where: { id } });
+  async findOne(id: number, tenantId?: number | null): Promise<Warehouse> {
+    const where: FindOptionsWhere<Warehouse> = { id };
+    if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
+    const wh = await this.repo.findOne({ where, relations: { tenant: true } });
     if (!wh) throw new NotFoundException(`Almacén ${id} no encontrado`);
     return wh;
   }
 
-  async create(dto: CreateWarehouseDto, createdByUserId?: number, tenantId?: number | null): Promise<Warehouse> {
-    const wh = this.repo.create({ ...dto, status: 1, createdByUserId: createdByUserId ?? null, entity: tenantId ?? 1 });
+  async create(
+    dto: CreateWarehouseDto,
+    createdByUserId: number | null,
+    userTenantId: number | null,
+    userType: UserType,
+  ): Promise<Warehouse> {
+    const { tenantId: dtoTenantId, ...rest } = dto;
+
+    let entity: number;
+    if (userType === 'super_admin') {
+      if (!dtoTenantId) {
+        throw new BadRequestException(
+          'Como super_admin debe indicar la organización (tenantId) del almacén',
+        );
+      }
+      entity = dtoTenantId;
+    } else {
+      if (userTenantId == null) {
+        throw new BadRequestException('El usuario no tiene una organización asignada');
+      }
+      entity = userTenantId;
+    }
+
+    const wh = this.repo.create({
+      ...rest,
+      status: rest.status ?? 1,
+      createdByUserId: createdByUserId ?? null,
+      entity,
+    });
     return this.repo.save(wh);
   }
 
-  async update(id: number, dto: Partial<UpdateWarehouseDto>): Promise<Warehouse> {
-    const wh = await this.findOne(id);
-    Object.assign(wh, dto);
+  async update(
+    id: number,
+    dto: Partial<UpdateWarehouseDto>,
+    userTenantId: number | null,
+    userType: UserType,
+  ): Promise<Warehouse> {
+    const wh = await this.findOne(id, userTenantId);
+    const { tenantId: dtoTenantId, ...rest } = dto;
+
+    // Solo super_admin puede mover un almacén de tenant
+    if (dtoTenantId !== undefined) {
+      if (userType !== 'super_admin') {
+        throw new ForbiddenException('No tenés permiso para cambiar la organización de un almacén');
+      }
+      wh.entity = dtoTenantId;
+    }
+
+    Object.assign(wh, rest);
     return this.repo.save(wh);
   }
 
-  async getStock(warehouseId: number): Promise<ProductStock[]> {
-    await this.findOne(warehouseId);
+  async getStock(warehouseId: number, tenantId?: number | null): Promise<ProductStock[]> {
+    await this.findOne(warehouseId, tenantId);
     return this.stockRepo.find({
       where: { warehouseId },
       relations: { product: true },

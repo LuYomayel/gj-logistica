@@ -9,14 +9,15 @@ export interface CreateWarehousePayload {
   address?: string;
   phone?: string;
   status?: number;
+  tenantId?: number;
 }
 
 export type UpdateWarehousePayload = Partial<CreateWarehousePayload>;
 
 export const warehousesApi = {
-  list: async (): Promise<PaginatedResponse<Warehouse>> => {
+  list: async (params?: { tenantId?: number }): Promise<PaginatedResponse<Warehouse>> => {
     const { data } = await apiClient.get<PaginatedResponse<Warehouse>>('/warehouses', {
-      params: { page: 1, limit: 100 },
+      params: { page: 1, limit: 100, tenantId: params?.tenantId },
     });
     return data;
   },

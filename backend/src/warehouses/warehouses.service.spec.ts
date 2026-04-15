@@ -65,11 +65,25 @@ describe('WarehousesService', () => {
   });
 
   describe('create', () => {
-    it('should create a warehouse', async () => {
+    it('should create a warehouse for client_admin using userTenantId', async () => {
       repo.create.mockReturnValue(mockWarehouse);
       repo.save.mockResolvedValue(mockWarehouse);
-      const result = await service.create({ name: 'Almacen general' }, 1);
+      const result = await service.create({ name: 'Almacen general' }, 1, 5, 'client_admin');
       expect(result.name).toBe('Almacen general');
+      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ entity: 5 }));
+    });
+
+    it('should require tenantId for super_admin', async () => {
+      await expect(
+        service.create({ name: 'Almacen general' }, 1, null, 'super_admin'),
+      ).rejects.toThrow('Como super_admin');
+    });
+
+    it('should use dto.tenantId for super_admin', async () => {
+      repo.create.mockReturnValue(mockWarehouse);
+      repo.save.mockResolvedValue(mockWarehouse);
+      await service.create({ name: 'A', tenantId: 7 }, 1, null, 'super_admin');
+      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ entity: 7 }));
     });
   });
 

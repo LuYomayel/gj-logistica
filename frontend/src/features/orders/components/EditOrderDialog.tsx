@@ -105,16 +105,6 @@ export function EditOrderDialog({ visible, onHide, order, onSaved }: Props) {
     >
       <form onSubmit={handleSubmit((v) => mut.mutate(v))} className="flex flex-col gap-5 pt-2">
 
-        {/* Tercero (read-only) */}
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Tercero</label>
-          <InputText
-            value={order.thirdParty?.name ?? '-'}
-            readOnly
-            className="w-full bg-gray-50 text-gray-500"
-          />
-        </div>
-
         {/* Datos editables */}
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos del pedido</p>

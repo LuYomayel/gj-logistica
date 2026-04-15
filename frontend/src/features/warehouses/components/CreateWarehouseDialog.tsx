@@ -6,6 +6,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { warehousesApi, type CreateWarehousePayload } from '../api/warehousesApi';
+import { useAuth } from '../../../shared/hooks/useAuth';
+import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
 
 interface Props {
   visible: boolean;
@@ -20,9 +22,13 @@ const STATUS_OPTIONS = [
 export function CreateWarehouseDialog({ visible, onHide }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
+  const { data: tenantsData } = useTenants();
+  const tenantOptions = (tenantsData ?? []).map((t) => ({ label: t.name, value: t.id }));
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<CreateWarehousePayload>({
-    defaultValues: { name: '', shortName: '', description: '', location: '', address: '', phone: '', status: 1 },
+    defaultValues: { name: '', shortName: '', description: '', location: '', address: '', phone: '', status: 1, tenantId: undefined },
   });
 
   const createMut = useMutation({
@@ -49,6 +55,32 @@ export function CreateWarehouseDialog({ visible, onHide }: Props) {
       draggable={false}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 pt-2">
+
+        {isSuperAdmin && (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+              Organización <span className="text-red-400">*</span>
+            </label>
+            <Controller
+              name="tenantId"
+              control={control}
+              rules={{ required: 'La organización es obligatoria' }}
+              render={({ field }) => (
+                <Dropdown
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={tenantOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccionar organización"
+                  className={`w-full ${errors.tenantId ? 'p-invalid' : ''}`}
+                  filter
+                />
+              )}
+            />
+            {errors.tenantId && <small className="text-red-500">{errors.tenantId.message}</small>}
+          </div>
+        )}
 
         {/* Nombre */}
         <div className="flex flex-col gap-1">

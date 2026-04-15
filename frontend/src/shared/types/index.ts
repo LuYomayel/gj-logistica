@@ -80,7 +80,8 @@ export interface Order {
   id: number;
   ref: string;
   clientRef: string | null;
-  thirdPartyId: number;
+  thirdPartyId: number | null;
+  entity: number;
   status: number;
   isDraft: boolean;
   isBilled: boolean;
@@ -96,7 +97,8 @@ export interface Order {
   agencia: string | null;
   createdAt: string;
   updatedAt: string;
-  thirdParty?: { id: number; name: string };
+  thirdParty?: { id: number; name: string } | null;
+  tenant?: { id: number; name: string } | null;
   createdBy?: { id: number; firstName: string | null; lastName: string | null; username: string };
   lines?: OrderLine[];
 }
@@ -178,6 +180,8 @@ export interface Warehouse {
   address: string | null;
   phone: string | null;
   status: number;
+  entity?: number;
+  tenant?: { id: number; name: string } | null;
   createdAt?: string;
 }
 

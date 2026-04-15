@@ -5,20 +5,30 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Skeleton } from 'primereact/skeleton';
+import { Dropdown } from 'primereact/dropdown';
 import { useState } from 'react';
 import { warehousesApi } from '../api/warehousesApi';
 import { CreateWarehouseDialog } from './CreateWarehouseDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Warehouse } from '../../../shared/types';
 
 export function WarehousesTable() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
+  const [tenantFilter, setTenantFilter] = useState<number | null>(null);
+
+  const isSuperAdmin = canManageTenants(user?.userType);
+  const { data: tenantsData } = useTenants();
+  const tenantOptions = [
+    { label: 'Todas las organizaciones', value: null },
+    ...((tenantsData ?? []).map((t) => ({ label: t.name, value: t.id }))),
+  ];
 
   const { data, isLoading } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: warehousesApi.list,
+    queryKey: ['warehouses', { tenantId: tenantFilter }],
+    queryFn: () => warehousesApi.list(isSuperAdmin && tenantFilter ? { tenantId: tenantFilter } : undefined),
   });
 
   const warehouses = data?.data ?? [];
@@ -42,14 +52,27 @@ export function WarehousesTable() {
             <h1 className="text-xl font-bold text-[#1b3a5f]">Almacenes</h1>
             <p className="text-sm text-gray-500 mt-0.5">{warehouses.length} almacén{warehouses.length !== 1 ? 'es' : ''}</p>
           </div>
-          {hasPermission('stock.write_warehouses') && (
-            <Button
-              label="Nuevo Almacén"
-              icon="pi pi-plus"
-              onClick={() => setShowCreate(true)}
-              className="bg-[#1b3a5f] text-white border-[#1b3a5f] hover:bg-[#152d4a] px-4 py-2"
-            />
-          )}
+          <div className="flex gap-2 items-center">
+            {isSuperAdmin && (
+              <Dropdown
+                value={tenantFilter}
+                onChange={(e) => setTenantFilter(e.value)}
+                options={tenantOptions}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Filtrar por organización"
+                className="w-64"
+              />
+            )}
+            {hasPermission('stock.write_warehouses') && (
+              <Button
+                label="Nuevo Almacén"
+                icon="pi pi-plus"
+                onClick={() => setShowCreate(true)}
+                className="bg-[#1b3a5f] text-white border-[#1b3a5f] hover:bg-[#152d4a] px-4 py-2"
+              />
+            )}
+          </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
@@ -73,6 +96,12 @@ export function WarehousesTable() {
               header="Nombre corto"
               body={(row: Warehouse) => row.shortName ?? '-'}
             />
+            {isSuperAdmin && (
+              <Column
+                header="Organización"
+                body={(row: Warehouse) => row.tenant?.name ?? `#${row.entity ?? '-'}`}
+              />
+            )}
             <Column
               field="location"
               header="Ubicación"

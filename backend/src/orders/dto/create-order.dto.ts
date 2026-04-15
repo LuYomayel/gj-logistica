@@ -1,6 +1,6 @@
 import {
   IsInt, IsNumber, IsOptional, IsString,
-  IsArray, ValidateNested, IsNotEmpty,
+  IsArray, ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -52,10 +52,17 @@ export class AddOrderLineDto {
 }
 
 export class CreateOrderDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Tercero opcional (legacy). Nunca es obligatorio.' })
   @IsInt({ message: 'El ID del tercero debe ser un entero' })
-  @IsNotEmpty({ message: 'El tercero es obligatorio' })
-  thirdPartyId: number;
+  @IsOptional()
+  @Type(() => Number)
+  thirdPartyId?: number;
+
+  @ApiPropertyOptional({ description: 'ID de la organización dueña del pedido. Obligatorio solo para super_admin.' })
+  @IsInt({ message: 'El ID de la organización debe ser un entero' })
+  @IsOptional()
+  @Type(() => Number)
+  tenantId?: number;
 
   @ApiPropertyOptional()
   @IsInt({ message: 'El ID del almacén debe ser un entero' })

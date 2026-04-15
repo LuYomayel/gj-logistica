@@ -6,6 +6,8 @@ export interface OrderFilters {
   limit?: number;
   status?: number | string;
   thirdPartyId?: number;
+  /** Solo respetado por el backend cuando el caller es super_admin. */
+  tenantId?: number;
   ref?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -20,7 +22,9 @@ export interface OrderStatsFilters {
 }
 
 export interface CreateOrderPayload {
-  thirdPartyId: number;
+  thirdPartyId?: number;
+  /** Solo lo envía super_admin; para otros usuarios el backend autoasigna su tenant. */
+  tenantId?: number;
   warehouseId?: number;
   clientRef?: string;
   publicNote?: string;

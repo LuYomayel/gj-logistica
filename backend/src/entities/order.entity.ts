@@ -5,6 +5,7 @@ import {
 import { ThirdParty } from './third-party.entity';
 import { Warehouse } from './warehouse.entity';
 import { User } from './user.entity';
+import { Tenant } from './tenant.entity';
 
 @Entity('orders')
 export class Order {
@@ -17,8 +18,8 @@ export class Order {
   @Column({ type: 'varchar', length: 255, nullable: true })
   clientRef: string | null;
 
-  @Column()
-  thirdPartyId: number;
+  @Column({ type: 'int', nullable: true })
+  thirdPartyId: number | null;
 
   @Column({ type: 'int', nullable: true })
   warehouseId: number | null;
@@ -91,9 +92,9 @@ export class Order {
   @Column({ type: 'varchar', length: 255, nullable: true })
   agencia: string | null;
 
-  @ManyToOne(() => ThirdParty)
+  @ManyToOne(() => ThirdParty, { nullable: true })
   @JoinColumn({ name: 'thirdPartyId' })
-  thirdParty: ThirdParty;
+  thirdParty: ThirdParty | null;
 
   @ManyToOne(() => Warehouse, { nullable: true })
   @JoinColumn({ name: 'warehouseId' })
@@ -106,6 +107,10 @@ export class Order {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'validatedByUserId' })
   validatedBy: User | null;
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'entity' })
+  tenant: Tenant | null;
 
   @OneToMany('OrderLine', 'order', { cascade: true })
   lines: unknown[];
