@@ -6,6 +6,7 @@ export interface InventoryFilters {
   limit?: number;
   warehouseId?: number;
   status?: number;
+  tenantId?: number;
 }
 
 export interface CreateInventoryPayload {
@@ -14,6 +15,7 @@ export interface CreateInventoryPayload {
   warehouseId?: number;
   productId?: number;
   inventoryDate?: string;
+  tenantId?: number;
 }
 
 export interface AddLinePayload {

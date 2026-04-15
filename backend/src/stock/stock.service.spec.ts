@@ -6,6 +6,7 @@ import { StockService } from './stock.service';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { Product } from '../entities/product.entity';
+import { Warehouse } from '../entities/warehouse.entity';
 
 // Helper to build a mock QueryRunner
 function buildMockQR(overrides: Record<string, unknown> = {}) {
@@ -64,6 +65,12 @@ describe('StockService', () => {
         },
         { provide: getRepositoryToken(ProductStock), useValue: {} },
         { provide: getRepositoryToken(Product), useValue: {} },
+        {
+          provide: getRepositoryToken(Warehouse),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ id: 1, entity: 1 }),
+          },
+        },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();

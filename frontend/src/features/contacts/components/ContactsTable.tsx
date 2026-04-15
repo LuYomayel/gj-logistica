@@ -10,6 +10,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
+import { TenantSelect } from '../../../shared/components/TenantSelect';
 import { contactsApi } from '../api/contactsApi';
 import { ContactFormDialog } from './ContactFormDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
@@ -26,12 +27,19 @@ export function ContactsTable() {
   const [limit, setLimit] = useState(20);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [tenantFilter, setTenantFilter] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editContact, setEditContact] = useState<Contact | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['contacts', { page, limit, search }],
-    queryFn: () => contactsApi.list({ page, limit, search: search || undefined }),
+    queryKey: ['contacts', { page, limit, search, tenantFilter }],
+    queryFn: () =>
+      contactsApi.list({
+        page,
+        limit,
+        search: search || undefined,
+        tenantId: isSuperAdmin && tenantFilter ? tenantFilter : undefined,
+      }),
   });
 
   const deleteMut = useMutation({
@@ -156,6 +164,18 @@ export function ContactsTable() {
               className="text-sm"
             />
           </div>
+          {isSuperAdmin && (
+            <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[220px]">
+              <label className="text-xs font-medium text-gray-600">Organización</label>
+              <TenantSelect
+                value={tenantFilter}
+                onChange={(id) => { setTenantFilter(id); setPage(1); }}
+                placeholder="Todas"
+                allowNull
+                nullLabel="Todas las organizaciones"
+              />
+            </div>
+          )}
           <Button
             label="Buscar"
             icon="pi pi-search"

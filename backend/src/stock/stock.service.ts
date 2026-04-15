@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { StockMovement } from '../entities/stock-movement.entity';
 import { ProductStock } from '../entities/product-stock.entity';
 import { Product } from '../entities/product.entity';
+import { Warehouse } from '../entities/warehouse.entity';
 import {
   CreateStockMovementDto, FilterMovementsDto,
   TransferStockDto, StockAtDateDto,
@@ -30,8 +31,21 @@ export class StockService {
     @InjectRepository(StockMovement) private movementRepo: Repository<StockMovement>,
     @InjectRepository(ProductStock) private stockRepo: Repository<ProductStock>,
     @InjectRepository(Product) private productRepo: Repository<Product>,
+    @InjectRepository(Warehouse) private warehouseRepo: Repository<Warehouse>,
     private dataSource: DataSource,
   ) {}
+
+  private async resolveWarehouseEntity(
+    warehouseId: number,
+    tenantId: number | null,
+  ): Promise<number> {
+    const w = await this.warehouseRepo.findOne({ where: { id: warehouseId } });
+    if (!w) throw new NotFoundException(`Almacén ${warehouseId} no encontrado`);
+    if (tenantId !== null && w.entity !== tenantId) {
+      throw new NotFoundException(`Almacén ${warehouseId} no encontrado`);
+    }
+    return w.entity;
+  }
 
   async findMovements(filter: FilterMovementsDto, tenantId: number | null): Promise<PaginatedMovements> {
     const { warehouseId, productId, originType, page = 1, limit = 50 } = filter;
@@ -70,6 +84,8 @@ export class StockService {
     createdByUserId: number,
     tenantId: number | null,
   ): Promise<StockMovement> {
+    const warehouseEntity = await this.resolveWarehouseEntity(dto.warehouseId, tenantId);
+
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
@@ -109,7 +125,7 @@ export class StockService {
         inventoryCode: dto.inventoryCode ?? null,
         createdByUserId,
         movedAt: new Date(),
-        entity: tenantId ?? 1,
+        entity: warehouseEntity,
       });
       const saved = await movementRepo.save(movement);
 
@@ -128,6 +144,14 @@ export class StockService {
    * fromWarehouseId opcional: si se omite, es una entrada directa al destino.
    */
   async transferStock(dto: TransferStockDto, createdByUserId: number, tenantId: number | null): Promise<StockMovement[]> {
+    const destEntity = await this.resolveWarehouseEntity(dto.toWarehouseId, tenantId);
+    const fromEntity = dto.fromWarehouseId
+      ? await this.resolveWarehouseEntity(dto.fromWarehouseId, tenantId)
+      : destEntity;
+    if (dto.fromWarehouseId && fromEntity !== destEntity) {
+      throw new BadRequestException('No se puede transferir stock entre almacenes de distintas organizaciones');
+    }
+
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
@@ -162,7 +186,7 @@ export class StockService {
           label: dto.label ?? `Transferencia a almacén ${dto.toWarehouseId}`,
           createdByUserId,
           movedAt: new Date(),
-          entity: tenantId ?? 1,
+          entity: fromEntity,
         });
         saved.push(await movementRepo.save(exitMov));
       }

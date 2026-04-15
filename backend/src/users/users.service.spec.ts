@@ -84,7 +84,7 @@ describe('UsersService', () => {
         password: 'pass123',
         firstName: 'Nuevo',
         lastName: 'Usuario',
-      }, null);
+      }, 1, 'client_admin');
 
       expect(result).toBeDefined();
       expect(userRepo.save).toHaveBeenCalled();

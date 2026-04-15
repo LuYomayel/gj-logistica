@@ -38,13 +38,30 @@ export class UsersService {
     return user;
   }
 
-  async create(dto: CreateUserDto, tenantId: number | null): Promise<User> {
+  async create(
+    dto: CreateUserDto,
+    userTenantId: number | null,
+    userType: 'super_admin' | 'client_admin' | 'client_user' = 'client_admin',
+  ): Promise<User> {
     const existing = await this.userRepo.findOne({ where: { username: dto.username } });
     if (existing) throw new ConflictException(`El usuario '${dto.username}' ya existe`);
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    // super_admin can specify entity/userType explicitly in the DTO
-    const effectiveEntity = dto.entity ?? tenantId ?? 1;
+
+    let effectiveEntity: number;
+    if (userType === 'super_admin') {
+      if (!dto.entity) {
+        throw new BadRequestException(
+          'Como super_admin debe indicar la organización (entity) del usuario',
+        );
+      }
+      effectiveEntity = dto.entity;
+    } else {
+      if (userTenantId == null) {
+        throw new BadRequestException('El usuario no tiene una organización asignada');
+      }
+      effectiveEntity = userTenantId;
+    }
     const user = this.userRepo.create({
       username: dto.username,
       passwordHash,

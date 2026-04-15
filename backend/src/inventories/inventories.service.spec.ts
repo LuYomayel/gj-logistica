@@ -109,15 +109,36 @@ describe('InventoriesService', () => {
   });
 
   describe('create', () => {
-    it('should create a new inventory in draft status', async () => {
+    it('should create a new inventory in draft status for client_admin', async () => {
       const dto = { ref: 'INV2026-001', label: 'Inventario general', warehouseId: 1 };
-      const created = { id: 1, ...dto, status: 0, createdByUserId: 5 };
+      const created = { id: 1, ...dto, status: 0, createdByUserId: 5, entity: 6 };
       mockInventoryRepo.create.mockReturnValue(created);
       mockInventoryRepo.save.mockResolvedValue(created);
 
-      const result = await service.create(dto, 5, null);
+      const result = await service.create(dto, 5, 6, 'client_admin');
       expect(result.status).toBe(0);
-      expect(mockInventoryRepo.save).toHaveBeenCalledWith(created);
+      expect(mockInventoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ entity: 6 }),
+      );
+    });
+
+    it('should require tenantId in body for super_admin', async () => {
+      const dto = { ref: 'INV2026-001' };
+      await expect(service.create(dto, 5, null, 'super_admin')).rejects.toThrow(
+        'Como super_admin debe indicar la organización',
+      );
+    });
+
+    it('should use dto.tenantId when super_admin', async () => {
+      const dto = { ref: 'INV2026-001', tenantId: 8 };
+      const created = { id: 1, ref: dto.ref, status: 0, createdByUserId: 5, entity: 8 };
+      mockInventoryRepo.create.mockReturnValue(created);
+      mockInventoryRepo.save.mockResolvedValue(created);
+
+      await service.create(dto, 5, null, 'super_admin');
+      expect(mockInventoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ entity: 8 }),
+      );
     });
   });
 

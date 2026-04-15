@@ -42,7 +42,7 @@ export class InventoriesController {
     @Body() dto: CreateInventoryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.create(dto, user.id, user.tenantId);
+    return this.service.create(dto, user.id, user.tenantId, user.userType);
   }
 
   @Post(':id/lines')

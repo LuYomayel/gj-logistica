@@ -20,13 +20,18 @@ export class ContactsController {
   @ApiOperation({ summary: 'Listar contactos' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'thirdPartyId', required: false })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Solo super_admin' })
   findAll(
     @Query('search') search?: string,
     @Query('thirdPartyId') thirdPartyId?: string,
+    @Query('tenantId') tenantIdRaw?: string,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
     const tpId = thirdPartyId ? Number(thirdPartyId) : undefined;
-    return this.service.findAll(search, user?.tenantId ?? null, tpId);
+    const filterTenantId = tenantIdRaw ? Number(tenantIdRaw) : undefined;
+    const effectiveTenantId =
+      user?.tenantId ?? (filterTenantId !== undefined ? filterTenantId : null);
+    return this.service.findAll(search, effectiveTenantId, tpId);
   }
 
   @Get(':id')

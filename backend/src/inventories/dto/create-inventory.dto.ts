@@ -31,6 +31,12 @@ export class CreateInventoryDto {
   @IsDateString({}, { message: 'La fecha debe tener formato válido (YYYY-MM-DD)' })
   @IsOptional()
   inventoryDate?: string;
+
+  @ApiPropertyOptional({ description: 'ID de la organización dueña del inventario. Obligatorio solo para super_admin.' })
+  @IsInt({ message: 'El ID de la organización debe ser un entero' })
+  @IsOptional()
+  @Type(() => Number)
+  tenantId?: number;
 }
 
 export class AddInventoryLineDto {
@@ -69,6 +75,12 @@ export class FilterInventoryDto {
   @IsOptional()
   @Type(() => Number)
   status?: number;
+
+  @ApiPropertyOptional({ description: 'Filtrar por organización (solo super_admin)' })
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  tenantId?: number;
 
   @ApiPropertyOptional({ default: 1 })
   @IsInt()

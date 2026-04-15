@@ -42,7 +42,7 @@ export class InventoriesService {
   }
 
   async findAll(filter: FilterInventoryDto, tenantId: number | null): Promise<PaginatedInventories> {
-    const { warehouseId, status, page = 1, limit = 20 } = filter;
+    const { warehouseId, status, page = 1, limit = 20, tenantId: filterTenantId } = filter;
 
     const qb = this.inventoryRepo
       .createQueryBuilder('i')
@@ -50,7 +50,11 @@ export class InventoriesService {
 
     if (warehouseId !== undefined) qb.andWhere('i.warehouseId = :warehouseId', { warehouseId });
     if (status !== undefined) qb.andWhere('i.status = :status', { status });
-    if (tenantId !== null) qb.andWhere('i.entity = :tenantId', { tenantId });
+    if (tenantId !== null) {
+      qb.andWhere('i.entity = :tenantId', { tenantId });
+    } else if (filterTenantId !== undefined) {
+      qb.andWhere('i.entity = :filterTenantId', { filterTenantId });
+    }
 
     qb.orderBy('i.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
 
@@ -80,16 +84,38 @@ export class InventoriesService {
     return { ...(full ?? inventory), lines: enrichedLines } as Inventory & { lines: InventoryLine[] };
   }
 
-  async create(dto: CreateInventoryDto, createdByUserId: number, tenantId: number | null): Promise<Inventory> {
+  async create(
+    dto: CreateInventoryDto,
+    createdByUserId: number,
+    userTenantId: number | null,
+    userType: 'super_admin' | 'client_admin' | 'client_user',
+  ): Promise<Inventory> {
+    const { tenantId: dtoTenantId, ...rest } = dto;
+
+    let entity: number;
+    if (userType === 'super_admin') {
+      if (!dtoTenantId) {
+        throw new BadRequestException(
+          'Como super_admin debe indicar la organización (tenantId) del inventario',
+        );
+      }
+      entity = dtoTenantId;
+    } else {
+      if (userTenantId == null) {
+        throw new BadRequestException('El usuario no tiene una organización asignada');
+      }
+      entity = userTenantId;
+    }
+
     const inventory = this.inventoryRepo.create({
-      ref: dto.ref,
-      label: dto.label ?? null,
-      warehouseId: dto.warehouseId ?? null,
-      productId: dto.productId ?? null,
-      inventoryDate: dto.inventoryDate ? new Date(dto.inventoryDate) : null,
+      ref: rest.ref,
+      label: rest.label ?? null,
+      warehouseId: rest.warehouseId ?? null,
+      productId: rest.productId ?? null,
+      inventoryDate: rest.inventoryDate ? new Date(rest.inventoryDate) : null,
       status: 0,
       createdByUserId,
-      entity: tenantId ?? 1,
+      entity,
     });
     return this.inventoryRepo.save(inventory);
   }

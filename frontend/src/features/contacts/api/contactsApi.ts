@@ -6,6 +6,7 @@ export interface ContactFilters {
   limit?: number;
   search?: string;
   thirdPartyId?: number;
+  tenantId?: number;
 }
 
 export interface CreateContactPayload {

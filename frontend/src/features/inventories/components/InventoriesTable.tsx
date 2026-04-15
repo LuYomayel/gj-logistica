@@ -11,6 +11,8 @@ import { Tag } from 'primereact/tag';
 import { Skeleton } from 'primereact/skeleton';
 import { inventoriesApi, type CreateInventoryPayload } from '../api/inventoriesApi';
 import { warehousesApi } from '../../warehouses/api/warehousesApi';
+import { TenantSelect } from '../../../shared/components/TenantSelect';
+import { canManageTenants } from '../../../shared/hooks/useTenants';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import type { Inventory } from '../../../shared/types';
 import { INVENTORY_STATUS } from '../../../shared/types';
@@ -18,20 +20,28 @@ import { INVENTORY_STATUS } from '../../../shared/types';
 export function InventoriesTable() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
   const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState<CreateInventoryPayload>({ ref: '' });
+  const [tenantFilter, setTenantFilter] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['inventories', page],
-    queryFn: () => inventoriesApi.list({ page, limit: 20 }),
+    queryKey: ['inventories', page, tenantFilter],
+    queryFn: () =>
+      inventoriesApi.list({
+        page,
+        limit: 20,
+        tenantId: isSuperAdmin && tenantFilter ? tenantFilter : undefined,
+      }),
   });
 
   const { data: warehousesData } = useQuery({
-    queryKey: ['warehouses', 'all'],
-    queryFn: () => warehousesApi.list(),
-    enabled: showNew,
+    queryKey: ['warehouses', 'all', form.tenantId ?? null],
+    queryFn: () =>
+      warehousesApi.list(isSuperAdmin && form.tenantId ? { tenantId: form.tenantId } : undefined),
+    enabled: showNew && (!isSuperAdmin || !!form.tenantId),
   });
   const warehouseOptions = [
     { label: 'Todos los almacenes', value: null as number | null },
@@ -69,14 +79,26 @@ export function InventoriesTable() {
           <h1 className="text-xl sm:text-2xl font-bold text-[#1b3a5f]">Inventarios</h1>
           <p className="text-gray-500 text-sm">{total.toLocaleString('es-AR')} inventarios en total</p>
         </div>
-        {hasPermission('stock.write_inventories') && (
-          <Button
-            label="Nuevo inventario"
-            icon="pi pi-plus"
-            onClick={() => setShowNew(true)}
-            className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
-          />
-        )}
+        <div className="flex gap-2 items-center">
+          {isSuperAdmin && (
+            <TenantSelect
+              value={tenantFilter}
+              onChange={(id) => { setTenantFilter(id); setPage(1); }}
+              placeholder="Filtrar por organización"
+              allowNull
+              nullLabel="Todas las organizaciones"
+              className="w-64"
+            />
+          )}
+          {hasPermission('stock.write_inventories') && (
+            <Button
+              label="Nuevo inventario"
+              icon="pi pi-plus"
+              onClick={() => setShowNew(true)}
+              className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 px-4 py-2"
+            />
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -127,6 +149,21 @@ export function InventoriesTable() {
         style={{ width: '440px' }}
       >
         <div className="flex flex-col gap-4 pt-2">
+          {isSuperAdmin && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">Organización *</label>
+              <TenantSelect
+                value={form.tenantId ?? null}
+                onChange={(tenantId) =>
+                  setForm((f) => ({
+                    ...f,
+                    tenantId: tenantId ?? undefined,
+                    warehouseId: undefined,
+                  }))
+                }
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Referencia *</label>
             <InputText
@@ -173,7 +210,7 @@ export function InventoriesTable() {
               label="Crear"
               icon="pi pi-check"
               loading={createMutation.isPending}
-              disabled={!form.ref.trim()}
+              disabled={!form.ref.trim() || (isSuperAdmin && !form.tenantId)}
               onClick={() => createMutation.mutate(form)}
               className="bg-blue-600 text-white border-blue-600"
             />
