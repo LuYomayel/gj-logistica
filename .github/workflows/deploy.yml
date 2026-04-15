@@ -163,15 +163,27 @@ jobs:
             echo '========================================='
 
             echo ''
-            echo '→ [1/4] Instalando dependencias del backend...'
+            echo '→ [1/4] Instalando dependencias del backend (skip si no cambió package-lock.json)...'
             cd ${{ secrets.DEPLOY_PATH }}/backend
-            npm ci
+            LOCK_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
+            if [ -d node_modules ] && [ "$(cat .deps-stamp 2>/dev/null)" = "$LOCK_HASH" ]; then
+              echo '  ↳ package-lock.json sin cambios, reutilizando node_modules'
+            else
+              echo '  ↳ instalando...'
+              npm ci --prefer-offline --no-audit --no-fund
+              echo "$LOCK_HASH" > .deps-stamp
+            fi
 
             echo ''
             echo '→ [1.5/4] Asegurando directorio de uploads de imágenes de productos...'
-            sudo mkdir -p /var/www/gj-logistica/uploads/products
-            sudo chown -R ${{ secrets.DEPLOY_USER }}:${{ secrets.DEPLOY_USER }} /var/www/gj-logistica/uploads
-            sudo chmod -R 0750 /var/www/gj-logistica/uploads
+            if [ ! -d /var/www/gj-logistica/uploads/products ]; then
+              sudo mkdir -p /var/www/gj-logistica/uploads/products
+              sudo chown -R ${{ secrets.DEPLOY_USER }}:${{ secrets.DEPLOY_USER }} /var/www/gj-logistica/uploads
+              sudo chmod 0750 /var/www/gj-logistica/uploads /var/www/gj-logistica/uploads/products
+              echo '  ↳ creado'
+            else
+              echo '  ↳ ya existe, sin tocar permisos (evita recursión costosa)'
+            fi
 
             echo ''
             echo '→ [2/4] Reiniciando backend con PM2...'
