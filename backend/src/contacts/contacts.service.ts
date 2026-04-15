@@ -36,13 +36,13 @@ export class ContactsService {
       ];
       return this.repo.find({
         where,
-        relations: ['thirdParty'],
+        relations: ['thirdParty', 'tenant'],
         order: { lastName: 'ASC' },
       });
     }
     return this.repo.find({
       where: baseFilter,
-      relations: ['thirdParty'],
+      relations: ['thirdParty', 'tenant'],
       order: { lastName: 'ASC' },
     });
   }
@@ -52,7 +52,7 @@ export class ContactsService {
     if (tenantId !== null && tenantId !== undefined) where.entity = tenantId;
     const contact = await this.repo.findOne({
       where,
-      relations: { thirdParty: true },
+      relations: { thirdParty: true, tenant: true },
     });
     if (!contact) throw new NotFoundException(`Contacto ${id} no encontrado`);
     return contact;

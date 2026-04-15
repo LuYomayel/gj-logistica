@@ -3,6 +3,7 @@ import {
   CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn,
 } from 'typeorm';
 import { ThirdParty } from './third-party.entity';
+import { Tenant } from './tenant.entity';
 
 @Entity('contacts')
 export class Contact {
@@ -70,4 +71,8 @@ export class Contact {
   @ManyToOne(() => ThirdParty, { nullable: true })
   @JoinColumn({ name: 'thirdPartyId' })
   thirdParty: ThirdParty | null;
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'entity' })
+  tenant: Tenant | null;
 }

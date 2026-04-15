@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import type { DataTablePageEvent } from 'primereact/datatable';
@@ -7,14 +7,20 @@ import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { Toast } from 'primereact/toast';
 import { contactsApi } from '../api/contactsApi';
 import { ContactFormDialog } from './ContactFormDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import { canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Contact } from '../../../shared/types';
 
 export function ContactsTable() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const queryClient = useQueryClient();
+  const { hasPermission, user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
+  const toast = useRef<Toast>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [searchInput, setSearchInput] = useState('');
@@ -26,6 +32,29 @@ export function ContactsTable() {
     queryKey: ['contacts', { page, limit, search }],
     queryFn: () => contactsApi.list({ page, limit, search: search || undefined }),
   });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => contactsApi.remove(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast.current?.show({ severity: 'success', summary: 'Contacto eliminado', life: 3000 });
+    },
+    onError: () => {
+      toast.current?.show({ severity: 'error', summary: 'Error al eliminar el contacto', life: 4000 });
+    },
+  });
+
+  const handleDelete = (row: Contact) => {
+    confirmDialog({
+      message: `¿Eliminar el contacto ${row.firstName ?? ''} ${row.lastName ?? ''}? Se marcará como inactivo.`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: () => deleteMut.mutate(row.id),
+    });
+  };
 
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -48,6 +77,8 @@ export function ContactsTable() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Toast ref={toast} />
+      <ConfirmDialog />
       <ContactFormDialog
         visible={showCreate || !!editContact}
         onHide={() => { setShowCreate(false); setEditContact(undefined); }}
@@ -181,19 +212,41 @@ export function ContactsTable() {
             style={{ width: '130px' }}
             body={(row: Contact) => row.lugarDeEntrega ?? '-'}
           />
+          {isSuperAdmin && (
+            <Column
+              field="tenant.name"
+              header="Organización"
+              style={{ width: '140px' }}
+              body={(row: Contact) => row.tenant?.name ?? `#${row.entity ?? '-'}`}
+            />
+          )}
           {hasPermission('contacts.write') && (
             <Column
               header=""
-              style={{ width: '50px' }}
+              style={{ width: '90px' }}
               body={(row: Contact) => (
-                <Button
-                  icon="pi pi-pencil"
-                  text
-                  severity="secondary"
-                  className="p-1"
-                  onClick={(e) => { e.stopPropagation(); setEditContact(row); }}
-                  tooltip="Editar"
-                />
+                <div className="flex gap-1">
+                  <Button
+                    icon="pi pi-pencil"
+                    text
+                    severity="secondary"
+                    className="p-1"
+                    onClick={(e) => { e.stopPropagation(); setEditContact(row); }}
+                    tooltip="Editar"
+                    tooltipOptions={{ position: 'top' }}
+                  />
+                  {hasPermission('contacts.delete') && (
+                    <Button
+                      icon="pi pi-trash"
+                      text
+                      severity="danger"
+                      className="p-1"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(row); }}
+                      tooltip="Eliminar"
+                      tooltipOptions={{ position: 'top' }}
+                    />
+                  )}
+                </div>
               )}
             />
           )}

@@ -121,6 +121,8 @@ export interface Contact {
   nombreFantasia: string | null;
   alias: string | null;
   thirdParty?: { id: number; name: string };
+  entity?: number;
+  tenant?: { id: number; name: string } | null;
 }
 
 export interface OrderContact {
