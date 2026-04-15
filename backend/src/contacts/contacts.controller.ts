@@ -60,10 +60,24 @@ export class ContactsController {
     return this.service.update(id, dto, user.tenantId, user.userType);
   }
 
-  @Delete(':id')
+  @Post(':id/deactivate')
   @RequiresPermission('contacts.delete')
-  @ApiOperation({ summary: 'Desactivar contacto' })
+  @ApiOperation({ summary: 'Desactivar contacto (soft)' })
   deactivate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
     return this.service.deactivate(id, user.tenantId);
+  }
+
+  @Post(':id/activate')
+  @RequiresPermission('contacts.write')
+  @ApiOperation({ summary: 'Reactivar contacto' })
+  activate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.activate(id, user.tenantId);
+  }
+
+  @Delete(':id')
+  @RequiresPermission('contacts.delete')
+  @ApiOperation({ summary: 'Eliminar contacto permanentemente' })
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    return this.service.remove(id, user.tenantId);
   }
 }

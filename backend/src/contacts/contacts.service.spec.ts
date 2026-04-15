@@ -31,6 +31,7 @@ describe('ContactsService', () => {
             findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
+            delete: jest.fn(),
           },
         },
       ],
@@ -116,6 +117,33 @@ describe('ContactsService', () => {
 
       const result = await service.deactivate(1, null);
       expect(result.status).toBe(0);
+    });
+  });
+
+  describe('activate', () => {
+    it('should set status to 1', async () => {
+      const contact = { ...mockContact, status: 0 } as Contact;
+      repo.findOne.mockResolvedValue(contact);
+      repo.save.mockResolvedValue({ ...contact, status: 1 });
+
+      const result = await service.activate(1, null);
+      expect(result.status).toBe(1);
+    });
+  });
+
+  describe('remove', () => {
+    it('should hard delete the contact', async () => {
+      repo.findOne.mockResolvedValue(mockContact as Contact);
+      repo.delete.mockResolvedValue({ affected: 1, raw: {} } as never);
+
+      await service.remove(1, null);
+      expect(repo.delete).toHaveBeenCalledWith({ id: 1 });
+    });
+
+    it('should throw NotFoundException when contact does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(service.remove(99, null)).rejects.toThrow(NotFoundException);
+      expect(repo.delete).not.toHaveBeenCalled();
     });
   });
 });

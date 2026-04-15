@@ -9,6 +9,7 @@ import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
+import { Tag } from 'primereact/tag';
 import { contactsApi } from '../api/contactsApi';
 import { ContactFormDialog } from './ContactFormDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
@@ -44,15 +45,48 @@ export function ContactsTable() {
     },
   });
 
+  const deactivateMut = useMutation({
+    mutationFn: (id: number) => contactsApi.deactivate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast.current?.show({ severity: 'success', summary: 'Contacto desactivado', life: 3000 });
+    },
+    onError: () => {
+      toast.current?.show({ severity: 'error', summary: 'Error al desactivar el contacto', life: 4000 });
+    },
+  });
+
+  const activateMut = useMutation({
+    mutationFn: (id: number) => contactsApi.activate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast.current?.show({ severity: 'success', summary: 'Contacto reactivado', life: 3000 });
+    },
+    onError: () => {
+      toast.current?.show({ severity: 'error', summary: 'Error al reactivar el contacto', life: 4000 });
+    },
+  });
+
   const handleDelete = (row: Contact) => {
     confirmDialog({
-      message: `¿Eliminar el contacto ${row.firstName ?? ''} ${row.lastName ?? ''}? Se marcará como inactivo.`,
+      message: `¿Eliminar permanentemente el contacto ${row.firstName ?? ''} ${row.lastName ?? ''}? Esta acción no se puede deshacer.`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
       rejectLabel: 'Cancelar',
       acceptClassName: 'p-button-danger',
       accept: () => deleteMut.mutate(row.id),
+    });
+  };
+
+  const handleDeactivate = (row: Contact) => {
+    confirmDialog({
+      message: `¿Desactivar el contacto ${row.firstName ?? ''} ${row.lastName ?? ''}? Se marcará como inactivo pero no se eliminará.`,
+      header: 'Confirmar desactivación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Desactivar',
+      rejectLabel: 'Cancelar',
+      accept: () => deactivateMut.mutate(row.id),
     });
   };
 
@@ -160,8 +194,15 @@ export function ContactsTable() {
           <Column
             field="lastName"
             header="Apellido"
-            style={{ width: '130px' }}
-            body={(row: Contact) => row.lastName ?? '-'}
+            style={{ width: '160px' }}
+            body={(row: Contact) => (
+              <div className="flex items-center gap-2">
+                <span>{row.lastName ?? '-'}</span>
+                {row.status === 0 && (
+                  <Tag value="Inactivo" severity="danger" className="text-[10px]" />
+                )}
+              </div>
+            )}
           />
           <Column
             field="firstName"
@@ -223,7 +264,7 @@ export function ContactsTable() {
           {hasPermission('contacts.write') && (
             <Column
               header=""
-              style={{ width: '90px' }}
+              style={{ width: '130px' }}
               body={(row: Contact) => (
                 <div className="flex gap-1">
                   <Button
@@ -236,13 +277,36 @@ export function ContactsTable() {
                     tooltipOptions={{ position: 'top' }}
                   />
                   {hasPermission('contacts.delete') && (
+                    row.status === 0 ? (
+                      <Button
+                        icon="pi pi-check-circle"
+                        text
+                        severity="success"
+                        className="p-1"
+                        onClick={(e) => { e.stopPropagation(); activateMut.mutate(row.id); }}
+                        tooltip="Reactivar"
+                        tooltipOptions={{ position: 'top' }}
+                      />
+                    ) : (
+                      <Button
+                        icon="pi pi-ban"
+                        text
+                        severity="warning"
+                        className="p-1"
+                        onClick={(e) => { e.stopPropagation(); handleDeactivate(row); }}
+                        tooltip="Desactivar"
+                        tooltipOptions={{ position: 'top' }}
+                      />
+                    )
+                  )}
+                  {hasPermission('contacts.delete') && (
                     <Button
                       icon="pi pi-trash"
                       text
                       severity="danger"
                       className="p-1"
                       onClick={(e) => { e.stopPropagation(); handleDelete(row); }}
-                      tooltip="Eliminar"
+                      tooltip="Eliminar permanentemente"
                       tooltipOptions={{ position: 'top' }}
                     />
                   )}

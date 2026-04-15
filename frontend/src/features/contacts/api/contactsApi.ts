@@ -47,8 +47,15 @@ export const contactsApi = {
     const { data } = await apiClient.patch<Contact>(`/contacts/${id}`, payload);
     return data;
   },
-  remove: async (id: number): Promise<Contact> => {
-    const { data } = await apiClient.delete<Contact>(`/contacts/${id}`);
+  remove: async (id: number): Promise<void> => {
+    await apiClient.delete(`/contacts/${id}`);
+  },
+  deactivate: async (id: number): Promise<Contact> => {
+    const { data } = await apiClient.post<Contact>(`/contacts/${id}/deactivate`);
+    return data;
+  },
+  activate: async (id: number): Promise<Contact> => {
+    const { data } = await apiClient.post<Contact>(`/contacts/${id}/activate`);
     return data;
   },
 };

@@ -47,13 +47,40 @@ export function ContactDetail({ id }: Props) {
     },
   });
 
-  const handleDelete = () => {
+  const deactivateMut = useMutation({
+    mutationFn: () => contactsApi.deactivate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      void queryClient.invalidateQueries({ queryKey: ['contacts', id] });
+    },
+  });
+
+  const activateMut = useMutation({
+    mutationFn: () => contactsApi.activate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      void queryClient.invalidateQueries({ queryKey: ['contacts', id] });
+    },
+  });
+
+  const handleDeactivate = () => {
     confirmDialog({
-      message: `¿Desactivar el contacto "${contact?.firstName} ${contact?.lastName}"?`,
+      message: `¿Desactivar el contacto "${contact?.firstName} ${contact?.lastName}"? Se marcará como inactivo pero no se eliminará.`,
       header: 'Confirmar desactivación',
       icon: 'pi pi-exclamation-triangle',
-      acceptClassName: 'bg-red-600 text-white border-red-600',
       acceptLabel: 'Desactivar',
+      rejectLabel: 'Cancelar',
+      accept: () => deactivateMut.mutate(),
+    });
+  };
+
+  const handleDelete = () => {
+    confirmDialog({
+      message: `¿Eliminar permanentemente el contacto "${contact?.firstName} ${contact?.lastName}"? Esta acción no se puede deshacer.`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClassName: 'bg-red-600 text-white border-red-600',
+      acceptLabel: 'Eliminar',
       rejectLabel: 'Cancelar',
       accept: () => deleteMut.mutate(),
     });
@@ -123,9 +150,32 @@ export function ContactDetail({ id }: Props) {
             />
           )}
           {hasPermission('contacts.delete') && (
+            contact.status === 0 ? (
+              <Button
+                label="Reactivar"
+                icon="pi pi-check-circle"
+                outlined
+                severity="success"
+                className="px-4 py-2"
+                onClick={() => activateMut.mutate()}
+                loading={activateMut.isPending}
+              />
+            ) : (
+              <Button
+                label="Desactivar"
+                icon="pi pi-ban"
+                outlined
+                severity="warning"
+                className="px-4 py-2"
+                onClick={handleDeactivate}
+                loading={deactivateMut.isPending}
+              />
+            )
+          )}
+          {hasPermission('contacts.delete') && (
             <Button
-              label="Desactivar"
-              icon="pi pi-ban"
+              label="Eliminar"
+              icon="pi pi-trash"
               outlined
               severity="danger"
               className="px-4 py-2"

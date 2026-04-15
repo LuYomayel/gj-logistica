@@ -122,4 +122,15 @@ export class ContactsService {
     contact.status = 0;
     return this.repo.save(contact);
   }
+
+  async activate(id: number, tenantId: number | null): Promise<Contact> {
+    const contact = await this.findOne(id, tenantId);
+    contact.status = 1;
+    return this.repo.save(contact);
+  }
+
+  async remove(id: number, tenantId: number | null): Promise<void> {
+    await this.findOne(id, tenantId);
+    await this.repo.delete({ id });
+  }
 }
