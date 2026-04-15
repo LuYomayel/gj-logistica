@@ -76,19 +76,18 @@ export class WarehousesService {
     userTenantId: number | null,
     userType: UserType,
   ): Promise<Warehouse> {
-    const wh = await this.findOne(id, userTenantId);
+    await this.findOne(id, userTenantId);
     const { tenantId: dtoTenantId, ...rest } = dto;
 
-    // Solo super_admin puede mover un almacén de tenant
-    if (dtoTenantId !== undefined) {
-      if (userType !== 'super_admin') {
-        throw new ForbiddenException('No tenés permiso para cambiar la organización de un almacén');
-      }
-      wh.entity = dtoTenantId;
+    if (dtoTenantId !== undefined && userType !== 'super_admin') {
+      throw new ForbiddenException('No tenés permiso para cambiar la organización de un almacén');
     }
 
-    Object.assign(wh, rest);
-    return this.repo.save(wh);
+    const patch: Record<string, unknown> = { ...rest };
+    if (dtoTenantId !== undefined) patch.entity = dtoTenantId;
+
+    await this.repo.update(id, patch);
+    return this.findOne(id, null);
   }
 
   async getStock(warehouseId: number, tenantId?: number | null): Promise<ProductStock[]> {
