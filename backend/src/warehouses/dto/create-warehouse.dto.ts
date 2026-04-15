@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, IsIn, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -70,4 +70,11 @@ export class CreateWarehouseDto {
   @IsBoolean({ message: 'El campo de alerta de stock debe ser verdadero o falso' })
   @IsOptional()
   lowStock?: boolean;
+
+  @ApiPropertyOptional({ description: '1 = abierto, 0 = cerrado', example: 1 })
+  @IsInt({ message: 'El estado debe ser un entero (1 abierto, 0 cerrado)' })
+  @IsIn([0, 1], { message: 'El estado debe ser 0 (cerrado) o 1 (abierto)' })
+  @IsOptional()
+  @Type(() => Number)
+  status?: number;
 }
