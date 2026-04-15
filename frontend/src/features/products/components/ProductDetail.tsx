@@ -10,6 +10,7 @@ import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { productsApi } from '../api/productsApi';
 import { EditProductDialog } from './EditProductDialog';
 import { ProductImageTab } from './ProductImageTab';
+import { AdjustProductStockDialog } from './AdjustProductStockDialog';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { canManageTenants } from '../../../shared/hooks/useTenants';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
@@ -40,6 +41,7 @@ export function ProductDetail({ id }: Props) {
   const showTenant = canManageTenants(user?.userType);
   const toast = useRef<Toast>(null);
   const [showEdit, setShowEdit] = useState(false);
+  const [showAdjustStock, setShowAdjustStock] = useState(false);
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['products', id],
@@ -131,6 +133,15 @@ export function ProductDetail({ id }: Props) {
     <div className="flex flex-col gap-4">
       <Toast ref={toast} />
       <ConfirmDialog />
+
+      {showAdjustStock && (
+        <AdjustProductStockDialog
+          visible={showAdjustStock}
+          onHide={() => setShowAdjustStock(false)}
+          onSaved={() => toast.current?.show({ severity: 'success', summary: 'Movimiento registrado', life: 2500 })}
+          product={{ id: product.id, ref: product.ref, label: product.label, stock: product.stock }}
+        />
+      )}
 
       {showEdit && (
         <EditProductDialog
@@ -246,13 +257,22 @@ export function ProductDetail({ id }: Props) {
           {/* Tab: Stock */}
           <TabPanel header="Stock">
             <div className="p-2">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex-1 min-w-[240px]">
                   <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
                     Stock actual
                   </h3>
-                  <InfoRow label="Stock físico" value={product.stock} />
+                  <InfoRow label="Stock físico total" value={product.stock} />
+                  <InfoRow label="Umbral de alerta" value={product.stockAlertThreshold} />
                 </div>
+                {hasPermission('stock.write_movements') && (
+                  <Button
+                    label="Ajustar stock"
+                    icon="pi pi-sliders-h"
+                    className="bg-[#1b3a5f] text-white border-[#1b3a5f] px-4 py-2"
+                    onClick={() => setShowAdjustStock(true)}
+                  />
+                )}
               </div>
             </div>
           </TabPanel>
