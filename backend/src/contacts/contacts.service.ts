@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository, FindOptionsWhere } from 'typeorm';
@@ -9,6 +11,8 @@ import { Contact } from '../entities/contact.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 
 export class UpdateContactDto extends CreateContactDto {}
+
+type UserType = 'super_admin' | 'client_admin' | 'client_user';
 
 @Injectable()
 export class ContactsService {
@@ -56,28 +60,61 @@ export class ContactsService {
 
   async create(
     dto: CreateContactDto,
-    tenantId: number | null,
+    userTenantId: number | null,
+    userType: UserType,
   ): Promise<Contact> {
-    if (dto.dni) {
-      const existing = await this.repo.findOne({ where: { dni: dto.dni } });
-      if (existing) throw new ConflictException(`DNI ${dto.dni} ya registrado`);
+    const { tenantId: dtoTenantId, ...rest } = dto;
+
+    let entity: number;
+    if (userType === 'super_admin') {
+      if (!dtoTenantId) {
+        throw new BadRequestException(
+          'Como super_admin debe indicar la organización (tenantId) del contacto',
+        );
+      }
+      entity = dtoTenantId;
+    } else {
+      if (userTenantId == null) {
+        throw new BadRequestException('El usuario no tiene una organización asignada');
+      }
+      entity = userTenantId;
+    }
+
+    if (rest.dni) {
+      const existing = await this.repo.findOne({ where: { dni: rest.dni } });
+      if (existing) throw new ConflictException(`DNI ${rest.dni} ya registrado`);
     }
     const contact = this.repo.create({
-      ...dto,
+      ...rest,
       status: 1,
-      entity: tenantId ?? 1,
+      entity,
     });
     return this.repo.save(contact);
   }
 
-  async update(id: number, dto: Partial<UpdateContactDto>, tenantId: number | null): Promise<Contact> {
-    const contact = await this.findOne(id, tenantId);
-    if (dto.dni && dto.dni !== contact.dni) {
-      const existing = await this.repo.findOne({ where: { dni: dto.dni } });
-      if (existing) throw new ConflictException(`DNI ${dto.dni} ya registrado`);
+  async update(
+    id: number,
+    dto: Partial<UpdateContactDto>,
+    userTenantId: number | null,
+    userType: UserType,
+  ): Promise<Contact> {
+    const contact = await this.findOne(id, userTenantId);
+    const { tenantId: dtoTenantId, ...rest } = dto;
+
+    if (dtoTenantId !== undefined && userType !== 'super_admin') {
+      throw new ForbiddenException('No tenés permiso para cambiar la organización de un contacto');
     }
-    Object.assign(contact, dto);
-    return this.repo.save(contact);
+
+    if (rest.dni && rest.dni !== contact.dni) {
+      const existing = await this.repo.findOne({ where: { dni: rest.dni } });
+      if (existing) throw new ConflictException(`DNI ${rest.dni} ya registrado`);
+    }
+
+    const patch: Record<string, unknown> = { ...rest };
+    if (dtoTenantId !== undefined) patch.entity = dtoTenantId;
+
+    await this.repo.update(id, patch);
+    return this.findOne(id, null);
   }
 
   async deactivate(id: number, tenantId: number | null): Promise<Contact> {

@@ -3,10 +3,13 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
+import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { contactsApi, type CreateContactPayload } from '../api/contactsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
+import { useAuth } from '../../../shared/hooks/useAuth';
+import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
 import type { Contact } from '../../../shared/types';
 
 interface Props {
@@ -19,6 +22,7 @@ interface Props {
 type FormValues = {
   firstName: string;
   lastName: string;
+  tenantId: number | null;
   thirdPartyId: number | null;
   email: string;
   phonePro: string;
@@ -35,6 +39,7 @@ type FormValues = {
 const emptyValues: FormValues = {
   firstName: '',
   lastName: '',
+  tenantId: null,
   thirdPartyId: null,
   email: '',
   phonePro: '',
@@ -52,6 +57,10 @@ export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) 
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = useState('');
   const isEdit = !!contact;
+  const { user } = useAuth();
+  const isSuperAdmin = canManageTenants(user?.userType);
+  const { data: tenantsData } = useTenants();
+  const tenantOptions = (tenantsData ?? []).map((t) => ({ label: t.name, value: t.id }));
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     defaultValues: emptyValues,
@@ -64,6 +73,7 @@ export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) 
         reset({
           firstName: contact.firstName ?? '',
           lastName: contact.lastName ?? '',
+          tenantId: (contact as { entity?: number }).entity ?? null,
           thirdPartyId: contact.thirdPartyId,
           email: contact.email ?? '',
           phonePro: contact.phonePro ?? '',
@@ -112,6 +122,7 @@ export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) 
     const payload: CreateContactPayload = {
       firstName: values.firstName,
       lastName: values.lastName,
+      tenantId: isSuperAdmin ? (values.tenantId ?? undefined) : undefined,
       thirdPartyId: values.thirdPartyId ?? undefined,
       email: values.email || undefined,
       phonePro: values.phonePro || undefined,
@@ -150,6 +161,32 @@ export function ContactFormDialog({ visible, onHide, onSaved, contact }: Props) 
       draggable={false}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5 pt-2">
+
+        {isSuperAdmin && (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+              Organización <span className="text-red-400">*</span>
+            </label>
+            <Controller
+              name="tenantId"
+              control={control}
+              rules={{ required: isSuperAdmin ? 'La organización es obligatoria' : false }}
+              render={({ field }) => (
+                <Dropdown
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  options={tenantOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccionar organización"
+                  className={`w-full ${errors.tenantId ? 'p-invalid' : ''}`}
+                  filter
+                />
+              )}
+            />
+            {errors.tenantId && <small className="text-red-500">{errors.tenantId.message}</small>}
+          </div>
+        )}
 
         {/* Datos personales */}
         <div>

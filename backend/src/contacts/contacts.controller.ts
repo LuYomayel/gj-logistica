@@ -46,7 +46,7 @@ export class ContactsController {
     @Body() dto: CreateContactDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.create(dto, user.tenantId);
+    return this.service.create(dto, user.tenantId, user.userType);
   }
 
   @Patch(':id')
@@ -57,7 +57,7 @@ export class ContactsController {
     @Body() dto: Partial<UpdateContactDto>,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.service.update(id, dto, user.tenantId);
+    return this.service.update(id, dto, user.tenantId, user.userType);
   }
 
   @Delete(':id')

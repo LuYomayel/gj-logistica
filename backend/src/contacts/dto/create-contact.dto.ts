@@ -4,6 +4,11 @@ import {
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export class CreateContactDto {
+  @ApiPropertyOptional({ description: 'ID de la organización dueña del contacto. Obligatorio solo para super_admin.' })
+  @IsInt({ message: 'El ID de la organización debe ser un entero' })
+  @IsOptional()
+  tenantId?: number;
+
   @ApiPropertyOptional()
   @IsInt({ message: 'El ID del tercero debe ser un entero' })
   @IsOptional()

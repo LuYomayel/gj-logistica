@@ -11,6 +11,7 @@ export interface ContactFilters {
 export interface CreateContactPayload {
   firstName: string;
   lastName: string;
+  tenantId?: number;
   thirdPartyId?: number;
   email?: string;
   phonePro?: string;

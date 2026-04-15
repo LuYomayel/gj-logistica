@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { Contact } from '../entities/contact.entity';
 
@@ -63,8 +63,8 @@ describe('ContactsService', () => {
   });
 
   describe('create', () => {
-    it('should create a contact', async () => {
-      repo.findOne.mockResolvedValue(null); // DNI no conflicts
+    it('should create a contact for client_admin using user tenantId', async () => {
+      repo.findOne.mockResolvedValue(null);
       repo.create.mockReturnValue(mockContact as Contact);
       repo.save.mockResolvedValue(mockContact as Contact);
 
@@ -72,14 +72,38 @@ describe('ContactsService', () => {
         firstName: 'Maria',
         lastName: 'Garcia',
         dni: 30123456,
-      }, null);
+      }, 1, 'client_admin');
       expect(result.firstName).toBe('Maria');
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ entity: 1 }),
+      );
+    });
+
+    it('should require tenantId in body for super_admin', async () => {
+      await expect(
+        service.create({ firstName: 'Maria', lastName: 'Garcia' }, null, 'super_admin'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should use dto.tenantId when super_admin', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockContact as Contact);
+      repo.save.mockResolvedValue(mockContact as Contact);
+
+      await service.create(
+        { firstName: 'Maria', lastName: 'Garcia', tenantId: 6 },
+        null,
+        'super_admin',
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ entity: 6 }),
+      );
     });
 
     it('should throw ConflictException if DNI already exists', async () => {
-      repo.findOne.mockResolvedValue(mockContact as Contact); // DNI taken
+      repo.findOne.mockResolvedValue(mockContact as Contact);
       await expect(
-        service.create({ firstName: 'Otro', lastName: 'Apellido', dni: 30123456 }, null),
+        service.create({ firstName: 'Otro', lastName: 'Apellido', dni: 30123456 }, 1, 'client_admin'),
       ).rejects.toThrow(ConflictException);
     });
   });
