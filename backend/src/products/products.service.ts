@@ -109,8 +109,10 @@ export class ProductsService {
     return product;
   }
 
-  async findByRef(ref: string): Promise<Product> {
-    const product = await this.repo.findOne({ where: { ref } });
+  async findByRef(ref: string, ctx: ProductContext): Promise<Product> {
+    const where: FindOptionsWhere<Product> = { ref };
+    if (!this.isSuperAdmin(ctx)) where.entity = ctx.tenantId as number;
+    const product = await this.repo.findOne({ where });
     if (!product) throw new NotFoundException(`Producto con ref '${ref}' no encontrado`);
     return product;
   }
@@ -240,7 +242,7 @@ export class ProductsService {
       if (!ref) continue;
 
       try {
-        const existing = await this.repo.findOne({ where: { ref } });
+        const existing = await this.repo.findOne({ where: { ref, entity: tenantId ?? 1 } });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: Record<string, any> = { ref };
 

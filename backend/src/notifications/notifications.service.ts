@@ -84,6 +84,7 @@ export class NotificationsService {
           email:      this.recipientEmail,
           response:   sendError ?? 'ok',
           thirdPartyId: order.thirdPartyId,
+          entity:     order.entity ?? 1,
         }),
       );
     } catch (err) {

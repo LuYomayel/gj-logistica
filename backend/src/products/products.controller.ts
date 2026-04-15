@@ -90,17 +90,28 @@ export class ProductsController {
   @ApiOperation({ summary: 'Importar productos desde Excel (.xlsx) o CSV' })
   async importExcel(
     @UploadedFile() file: Express.Multer.File,
+    @Query('tenantId') tenantIdQuery: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) throw new BadRequestException('No se recibió archivo');
-    return this.service.importFromExcel(file.buffer, user.id, user.tenantId);
+    let effectiveTenantId: number | null = user.tenantId;
+    if (user.userType === 'super_admin') {
+      if (!tenantIdQuery) {
+        throw new BadRequestException('Como super_admin debe indicar la organización (tenantId) destino del import');
+      }
+      effectiveTenantId = Number(tenantIdQuery);
+    }
+    return this.service.importFromExcel(file.buffer, user.id, effectiveTenantId);
   }
 
   @Get('ref/:ref')
   @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Buscar producto por referencia' })
-  findByRef(@Param('ref') ref: string) {
-    return this.service.findByRef(ref);
+  findByRef(
+    @Param('ref') ref: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findByRef(ref, this.ctx(user));
   }
 
   @Get(':id')

@@ -146,13 +146,21 @@ describe('ProductsService', () => {
   describe('findByRef', () => {
     it('should find product by ref', async () => {
       repo.findOne.mockResolvedValue(mockProduct as Product);
-      const result = await service.findByRef('BI000032');
+      const result = await service.findByRef('BI000032', superAdminCtx);
       expect(result.id).toBe(1);
+    });
+
+    it('should scope by tenant when not super_admin', async () => {
+      repo.findOne.mockResolvedValue(mockProduct as Product);
+      await service.findByRef('BI000032', clientCtx(1));
+      expect(repo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ ref: 'BI000032', entity: 1 }) }),
+      );
     });
 
     it('should throw NotFoundException if ref not found', async () => {
       repo.findOne.mockResolvedValue(null);
-      await expect(service.findByRef('NOTEXIST')).rejects.toThrow(NotFoundException);
+      await expect(service.findByRef('NOTEXIST', superAdminCtx)).rejects.toThrow(NotFoundException);
     });
   });
 
