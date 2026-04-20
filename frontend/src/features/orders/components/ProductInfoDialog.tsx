@@ -70,7 +70,6 @@ export function ProductInfoDialog({ productId, visible, onHide }: Props) {
             {showTenant && (
               <InfoRow label="Organización" value={product.tenant?.name ?? `#${product.entity}`} />
             )}
-            <InfoRow label="Código de barras" value={product.barcode} />
             <InfoRow label="Stock actual" value={product.stock} />
             {hasPermission('products.read_position') && (
               <InfoRow label="Posición" value={product.posicion} />

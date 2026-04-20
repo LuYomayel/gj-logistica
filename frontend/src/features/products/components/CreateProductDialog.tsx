@@ -32,7 +32,6 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
       ref: '',
       label: '',
       description: '',
-      barcode: '',
       posicion: '',
       color: '',
       marca: '',
@@ -49,7 +48,6 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
         ref: values.ref,
         label: values.label || undefined,
         description: values.description || undefined,
-        barcode: values.barcode || undefined,
         posicion: values.posicion || undefined,
         color: values.color || undefined,
         marca: values.marca || undefined,
@@ -133,10 +131,6 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
               {errors.ref && <small className="text-red-500">{errors.ref.message}</small>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Código de barras</label>
-              <InputText {...register('barcode')} placeholder="EAN, UPC..." className="w-full" />
-            </div>
-            <div className="col-span-2 flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Etiqueta</label>
               <InputText
                 {...register('label')}

@@ -23,8 +23,6 @@ export function ProductsTable() {
   const { data: tenants = [] } = useTenants();
   const [filters, setFilters] = useState<ProductFilters>({ page: 1, limit: 20 });
   const [searchInput, setSearchInput] = useState('');
-  const [rubInput, setRubInput] = useState('');
-  const [marcaInput, setMarcaInput] = useState('');
   const [tenantInput, setTenantInput] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -66,16 +64,12 @@ export function ProductsTable() {
       page: 1,
       limit: 20,
       search: searchInput || undefined,
-      rubro: rubInput || undefined,
-      marca: marcaInput || undefined,
       tenantId: tenantInput ?? undefined,
     });
   };
 
   const clearFilters = () => {
     setSearchInput('');
-    setRubInput('');
-    setMarcaInput('');
     setTenantInput(null);
     setFilters({ page: 1, limit: 20 });
   };
@@ -165,26 +159,6 @@ export function ProductsTable() {
               className="text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[140px]">
-            <label className="text-xs font-medium text-gray-600">Rubro</label>
-            <InputText
-              value={rubInput}
-              onChange={(e) => setRubInput(e.target.value)}
-              placeholder="Rubro..."
-              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-              className="text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[140px]">
-            <label className="text-xs font-medium text-gray-600">Marca</label>
-            <InputText
-              value={marcaInput}
-              onChange={(e) => setMarcaInput(e.target.value)}
-              placeholder="Marca..."
-              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-              className="text-sm"
-            />
-          </div>
           {showTenantColumn && (
             <div className="flex flex-col gap-1 w-full sm:w-auto sm:min-w-[200px]">
               <label className="text-xs font-medium text-gray-600">Organización</label>
@@ -264,7 +238,6 @@ export function ProductsTable() {
               body={(row: Product) => row.tenant?.name ?? `#${row.entity}`}
             />
           )}
-          <Column field="barcode" header="Código de barras" style={{ width: '160px' }} />
           <Column
             field="stock"
             header="Stock físico"

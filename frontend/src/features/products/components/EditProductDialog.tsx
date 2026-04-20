@@ -34,7 +34,6 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
       ref: product.ref,
       label: product.label ?? '',
       description: product.description ?? '',
-      barcode: product.barcode ?? '',
       posicion: product.posicion ?? '',
       color: product.color ?? '',
       marca: product.marca ?? '',
@@ -51,7 +50,6 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
         ref: product.ref,
         label: product.label ?? '',
         description: product.description ?? '',
-        barcode: product.barcode ?? '',
         posicion: product.posicion ?? '',
         color: product.color ?? '',
         marca: product.marca ?? '',
@@ -70,7 +68,6 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
         ref: values.ref,
         label: values.label || undefined,
         description: values.description || undefined,
-        barcode: values.barcode || undefined,
         posicion: values.posicion || undefined,
         color: values.color || undefined,
         marca: values.marca || undefined,
@@ -152,10 +149,6 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
               {errors.ref && <small className="text-red-500">{errors.ref.message}</small>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Código de barras</label>
-              <InputText {...register('barcode')} placeholder="EAN, UPC..." className="w-full" />
-            </div>
-            <div className="col-span-2 flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">Etiqueta</label>
               <InputText {...register('label')} placeholder="Nombre del producto" className="w-full" />
             </div>

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
-import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { productsApi } from '../api/productsApi';
@@ -169,11 +168,6 @@ export function ProductDetail({ id }: Props) {
               {product.ref} — {product.label ?? 'Sin nombre'}
             </h1>
           </div>
-          <div className="flex gap-2 ml-8">
-            {product.barcode && (
-              <Tag value={product.barcode} severity="secondary" icon="pi pi-barcode" />
-            )}
-          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -231,7 +225,6 @@ export function ProductDetail({ id }: Props) {
                   )}
                   <InfoRow label="Etiqueta" value={product.label} />
                   <InfoRow label="Descripción" value={product.description} />
-                  <InfoRow label="Código de barras" value={product.barcode} />
                   <InfoRow label="Rubro" value={product.rubro} />
                   <InfoRow label="Subrubro" value={product.subrubro} />
                   <InfoRow label="Marca" value={product.marca} />
