@@ -34,6 +34,7 @@ const mockQb = {
   take: jest.fn().mockReturnThis(),
   orderBy: jest.fn().mockReturnThis(),
   addOrderBy: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   leftJoinAndSelect: jest.fn().mockReturnThis(),
   getManyAndCount: jest.fn().mockResolvedValue([[mockProduct], 1]),

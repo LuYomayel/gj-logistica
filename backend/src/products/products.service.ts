@@ -162,7 +162,18 @@ export class ProductsService {
       qb.andWhere('p.entity = :tenantId', { tenantId: ctx.tenantId });
     }
 
-    qb.skip((page - 1) * limit).take(limit).orderBy('p.ref', 'ASC');
+    // Orden natural del ref: prefijo (alfabético) + número final como entero, para
+    // que ADAMA-2 < ADAMA-11 < ADAMA-20. Las expresiones se exponen con alias
+    // (addSelect) y se ordena por el alias — así TypeORM NO parsea el `p.ref` de
+    // adentro de la función como alias.columna (eso tiraba 500 con take + join).
+    qb.addSelect("REGEXP_REPLACE(p.ref, '-[0-9]+$', '')", 'ref_prefix')
+      .addSelect("CAST(REGEXP_SUBSTR(p.ref, '[0-9]+$') AS UNSIGNED)", 'ref_num');
+
+    qb.skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('ref_prefix', 'ASC')
+      .addOrderBy('ref_num', 'ASC')
+      .addOrderBy('p.ref', 'ASC');
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit };
