@@ -5,7 +5,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { productsApi, type CreateProductPayload } from '../api/productsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
 import { useAuth } from '../../../shared/hooks/useAuth';
@@ -27,7 +27,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
   const activeTenants = tenants.filter((t) => t.isActive);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const { handleSubmit, reset, register, control, formState: { errors } } = useForm<FormValues>({
+  const { handleSubmit, reset, register, control, watch, setValue, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       ref: '',
       label: '',
@@ -42,10 +42,32 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
     },
   });
 
+  // Autogeneración del ref: true mientras el usuario no lo edite a mano.
+  const [isAutoRef, setIsAutoRef] = useState(true);
+  const selectedTenant = watch('tenantId');
+
+  // Al elegir organización (super_admin) o al abrir el dialog (no-super_admin),
+  // pedimos el preview del próximo ref (PREFIX-N) y lo autocompletamos.
+  useEffect(() => {
+    if (!visible) return;
+    if (showTenantSelector && !selectedTenant) return; // todavía no eligió org
+    let cancelled = false;
+    productsApi
+      .nextRef(showTenantSelector ? selectedTenant : undefined)
+      .then((res) => {
+        if (cancelled) return;
+        setValue('ref', res.ref);
+        setIsAutoRef(true);
+      })
+      .catch(() => { /* preview best-effort; el usuario puede tipear el ref */ });
+    return () => { cancelled = true; };
+  }, [visible, selectedTenant, showTenantSelector, setValue]);
+
   const mut = useMutation({
     mutationFn: (values: FormValues) => {
       const payload: CreateProductPayload = {
-        ref: values.ref,
+        ref: values.ref || undefined,
+        autoRef: isAutoRef,
         label: values.label || undefined,
         description: values.description || undefined,
         posicion: values.posicion || undefined,
@@ -61,6 +83,7 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
     onSuccess: (product) => {
       void queryClient.invalidateQueries({ queryKey: ['products'] });
       reset();
+      setIsAutoRef(true);
       setErrorMsg('');
       onHide();
       onCreated?.(product.id);
@@ -70,9 +93,13 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
 
   const handleHide = () => {
     reset();
+    setIsAutoRef(true);
     setErrorMsg('');
     onHide();
   };
+
+  // El ref es obligatorio sólo si el usuario lo va a tipear a mano (autoRef=false).
+  const refField = register('ref', { required: isAutoRef ? false : 'La ref es obligatoria' });
 
   return (
     <Dialog
@@ -124,10 +151,14 @@ export function CreateProductDialog({ visible, onHide, onCreated }: Props) {
                 Ref <span className="text-red-400">*</span>
               </label>
               <InputText
-                {...register('ref', { required: 'La ref es obligatoria' })}
-                placeholder="Ej: BI000032"
+                {...refField}
+                onChange={(e) => { refField.onChange(e); setIsAutoRef(false); }}
+                placeholder="Se autocompleta al elegir organización"
                 className={`w-full ${errors.ref ? 'p-invalid' : ''}`}
               />
+              {isAutoRef && !errors.ref && (
+                <small className="text-gray-400">Autogenerada — podés editarla</small>
+              )}
               {errors.ref && <small className="text-red-500">{errors.ref.message}</small>}
             </div>
             <div className="flex flex-col gap-1">

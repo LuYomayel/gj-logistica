@@ -54,6 +54,17 @@ export class ProductsController {
     return this.service.getLowStock(user.tenantId);
   }
 
+  @Get('next-ref')
+  @RequiresPermission('products.write')
+  @ApiOperation({ summary: 'Preview del próximo ref autogenerado (PREFIX-N) para una organización' })
+  nextRef(
+    @Query('tenantId') tenantIdQuery: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = tenantIdQuery ? Number(tenantIdQuery) : undefined;
+    return this.service.peekNextRef(this.ctx(user), tenantId);
+  }
+
   @Get('export')
   @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Exportar productos como CSV' })

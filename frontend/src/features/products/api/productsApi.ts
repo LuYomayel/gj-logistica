@@ -18,7 +18,9 @@ export interface ProductStatsFilters {
 }
 
 export interface CreateProductPayload {
-  ref: string;
+  ref?: string;
+  /** Si es true, el backend genera el ref automáticamente (PREFIX-N por organización). */
+  autoRef?: boolean;
   label?: string;
   description?: string;
   barcode?: string;
@@ -31,6 +33,11 @@ export interface CreateProductPayload {
   tenantId?: number;
 }
 
+export interface NextRefResponse {
+  ref: string;
+  prefix: string;
+}
+
 export const productsApi = {
   list: async (filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> => {
     const params = { page: 1, limit: 20, ...filters };
@@ -40,6 +47,12 @@ export const productsApi = {
   get: async (id: number): Promise<Product> => {
     const { data } = await apiClient.get<Product>(`/products/${id}`);
     return data;
+  },
+  nextRef: async (tenantId?: number): Promise<NextRefResponse> => {
+    const { data } = await apiClient.get('/products/next-ref', {
+      params: tenantId ? { tenantId } : {},
+    });
+    return data as unknown as NextRefResponse;
   },
   create: async (payload: CreateProductPayload): Promise<Product> => {
     const { data } = await apiClient.post<Product>('/products', payload);

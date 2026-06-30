@@ -33,6 +33,7 @@ const mockQb = {
   skip: jest.fn().mockReturnThis(),
   take: jest.fn().mockReturnThis(),
   orderBy: jest.fn().mockReturnThis(),
+  addOrderBy: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   leftJoinAndSelect: jest.fn().mockReturnThis(),
   getManyAndCount: jest.fn().mockResolvedValue([[mockProduct], 1]),
@@ -52,8 +53,18 @@ const mockDsQb = {
   getRawMany: jest.fn().mockResolvedValue([]),
 };
 
+const mockManager = {
+  query: jest.fn((sql: string) =>
+    /LAST_INSERT_ID\(\)\s+AS\s+seq/i.test(sql) ? Promise.resolve([{ seq: 1 }]) : Promise.resolve([]),
+  ),
+  findOne: jest.fn().mockResolvedValue(null),
+};
+
 const mockDataSource = {
   createQueryBuilder: jest.fn().mockReturnValue(mockDsQb),
+  query: jest.fn().mockResolvedValue([]),
+  manager: mockManager,
+  createQueryRunner: jest.fn(),
 };
 
 describe('ProductsService', () => {
@@ -218,13 +229,14 @@ describe('ProductsService', () => {
   });
 
   describe('update', () => {
-    it('super_admin can change entity via tenantId', async () => {
+    it('super_admin can change entity via tenantId (y regenera el ref con el prefijo nuevo)', async () => {
       const product = { ...mockProduct, entity: 1 } as Product;
       repo.findOne.mockResolvedValue(product);
       repo.save.mockImplementation(async (x: any) => x);
-
+      // tenant 2 → code 'ORG2' (del beforeEach) → prefijo 'ORG2', secuencia → 1
       const result = await service.update(1, { tenantId: 2 } as any, superAdminCtx);
       expect(result.entity).toBe(2);
+      expect(result.ref).toBe('ORG2-1');
     });
 
     it('super_admin change entity with invalid tenant fails', async () => {
