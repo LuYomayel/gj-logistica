@@ -162,13 +162,7 @@ export class ProductsService {
       qb.andWhere('p.entity = :tenantId', { tenantId: ctx.tenantId });
     }
 
-    // Orden natural del ref: primero el prefijo (alfabético), luego el número
-    // final como entero, para que ADAMA-2 < ADAMA-11 < ADAMA-20 (no lexicográfico).
-    qb.skip((page - 1) * limit)
-      .take(limit)
-      .orderBy("REGEXP_REPLACE(p.ref, '-[0-9]+$', '')", 'ASC')
-      .addOrderBy("CAST(REGEXP_SUBSTR(p.ref, '[0-9]+$') AS UNSIGNED)", 'ASC')
-      .addOrderBy('p.ref', 'ASC');
+    qb.skip((page - 1) * limit).take(limit).orderBy('p.ref', 'ASC');
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit };
