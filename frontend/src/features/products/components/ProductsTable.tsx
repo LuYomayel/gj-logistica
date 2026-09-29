@@ -27,24 +27,19 @@ export function ProductsTable() {
   const [tenantInput, setTenantInput] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportingStock, setExportingStock] = useState(false);
   const [showExportStock, setShowExportStock] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Exporta el stock (Ref, Etiqueta, Cantidad) de UNA organización. Super_admin usa la
+  // organización filtrada; si está en "Todas", la elige en un diálogo. El resto exporta la suya.
   const handleExport = async () => {
-    setExporting(true);
-    try { await productsApi.exportCsv(); } finally { setExporting(false); }
-  };
-
-  // Super_admin elige la organización en un diálogo; el resto exporta la suya directo.
-  const handleExportStock = async () => {
-    if (showTenantColumn) {
+    if (showTenantColumn && !filters.tenantId) {
       setShowExportStock(true);
       return;
     }
-    setExportingStock(true);
-    try { await productsApi.exportStockXlsx(); } finally { setExportingStock(false); }
+    setExporting(true);
+    try { await productsApi.exportStockXlsx(filters.tenantId); } finally { setExporting(false); }
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,23 +131,12 @@ export function ProductsTable() {
           )}
           {hasPermission('products.export') && (
             <Button
-              label="Exportar CSV"
+              label="Exportar Excel"
               icon="pi pi-download"
               outlined
               severity="secondary"
               loading={exporting}
               onClick={handleExport}
-              className="px-4 py-2"
-            />
-          )}
-          {hasPermission('products.export') && (
-            <Button
-              label="Exportar stock"
-              icon="pi pi-file-excel"
-              outlined
-              severity="secondary"
-              loading={exportingStock}
-              onClick={handleExportStock}
               className="px-4 py-2"
             />
           )}

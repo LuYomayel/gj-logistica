@@ -75,15 +75,6 @@ export const productsApi = {
     // Backend returns the object directly (not paginated)
     return data as unknown as ProductStats;
   },
-  exportCsv: async (): Promise<void> => {
-    const resp = await apiClient.get('/products/export', { responseType: 'blob' });
-    const url = URL.createObjectURL(new Blob([resp.data as BlobPart], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'productos.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  },
   exportStockXlsx: async (tenantId?: number): Promise<void> => {
     const resp = await apiClient.get('/products/export-stock', {
       params: tenantId ? { tenantId } : undefined,
