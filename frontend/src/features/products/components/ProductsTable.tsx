@@ -10,6 +10,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { Dropdown } from 'primereact/dropdown';
 import { productsApi, type ProductFilters } from '../api/productsApi';
 import { CreateProductDialog } from './CreateProductDialog';
+import { ExportStockDialog } from './ExportStockDialog';
 import { AuthImage } from '../../../shared/components/AuthImage';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
@@ -26,12 +27,24 @@ export function ProductsTable() {
   const [tenantInput, setTenantInput] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingStock, setExportingStock] = useState(false);
+  const [showExportStock, setShowExportStock] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = async () => {
     setExporting(true);
     try { await productsApi.exportCsv(); } finally { setExporting(false); }
+  };
+
+  // Super_admin elige la organización en un diálogo; el resto exporta la suya directo.
+  const handleExportStock = async () => {
+    if (showTenantColumn) {
+      setShowExportStock(true);
+      return;
+    }
+    setExportingStock(true);
+    try { await productsApi.exportStockXlsx(); } finally { setExportingStock(false); }
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,6 +106,9 @@ export function ProductsTable() {
         onHide={() => setShowCreate(false)}
         onCreated={(id) => navigate(`/products/${id}`)}
       />
+      {showTenantColumn && (
+        <ExportStockDialog visible={showExportStock} onHide={() => setShowExportStock(false)} />
+      )}
 
       {/* Title */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -126,6 +142,17 @@ export function ProductsTable() {
               severity="secondary"
               loading={exporting}
               onClick={handleExport}
+              className="px-4 py-2"
+            />
+          )}
+          {hasPermission('products.export') && (
+            <Button
+              label="Exportar stock"
+              icon="pi pi-file-excel"
+              outlined
+              severity="secondary"
+              loading={exportingStock}
+              onClick={handleExportStock}
               className="px-4 py-2"
             />
           )}

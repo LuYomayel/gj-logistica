@@ -84,6 +84,22 @@ export const productsApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+  exportStockXlsx: async (tenantId?: number): Promise<void> => {
+    const resp = await apiClient.get('/products/export-stock', {
+      params: tenantId ? { tenantId } : undefined,
+      responseType: 'blob',
+    });
+    const disposition = String(resp.headers['content-disposition'] ?? '');
+    const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'stock.xlsx';
+    const url = URL.createObjectURL(new Blob([resp.data as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
   uploadImage: async (
     productId: number,
     file: File,

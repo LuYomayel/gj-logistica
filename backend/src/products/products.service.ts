@@ -318,6 +318,49 @@ export class ProductsService {
   }
 
   /**
+   * Exporta el stock de UNA organización como .xlsx con solo Referencia, Etiqueta y
+   * Cantidad (lo que piden los clientes). Super_admin elige la org; el resto usa la suya.
+   * Incluye productos desactivados: su stock sigue físicamente en el almacén.
+   */
+  async exportStockXlsx(
+    ctx: ProductContext,
+    tenantIdParam?: number,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    let entity: number;
+    if (this.isSuperAdmin(ctx)) {
+      if (!tenantIdParam) throw new BadRequestException('Debe seleccionar una organización');
+      await this.assertTenantValid(tenantIdParam);
+      entity = tenantIdParam;
+    } else {
+      entity = ctx.tenantId as number;
+    }
+    const tenant = await this.tenantRepo.findOne({ where: { id: entity } });
+
+    const products = await this.repo.createQueryBuilder('p')
+      .andWhere('p.entity = :tenantId', { tenantId: entity })
+      .getMany();
+    // Orden natural en memoria (ADAMA-2 < ADAMA-11) — evita el parser de orderBy de TypeORM.
+    products.sort((a, b) => a.ref.localeCompare(b.ref, 'es', { numeric: true }));
+
+    const rows: unknown[][] = [
+      ['Referencia', 'Etiqueta', 'Cantidad'],
+      ...products.map((p) => [p.ref, (p.label ?? '').trim(), p.stock ?? 0]),
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const xlsx = require('xlsx') as typeof import('xlsx');
+    const ws = xlsx.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 14 }, { wch: 50 }, { wch: 11 }];
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Stock');
+    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+
+    const code = buildRefPrefix(tenant?.code ?? '') || `ORG-${entity}`;
+    const date = new Date().toISOString().slice(0, 10);
+    return { buffer, filename: `stock-${code}-${date}.xlsx` };
+  }
+
+  /**
    * Import products from an Excel/CSV buffer.
    * Upserts by ref: creates if not found, updates if exists.
    */

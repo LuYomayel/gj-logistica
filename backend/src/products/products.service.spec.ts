@@ -260,6 +260,54 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('exportStockXlsx', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const xlsx = require('xlsx') as typeof import('xlsx');
+    const readRows = (buffer: Buffer): unknown[][] => {
+      const wb = xlsx.read(buffer, { type: 'buffer' });
+      return xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+    };
+
+    beforeEach(() => {
+      tenantRepo.findOne.mockResolvedValue({ id: 4, name: 'ADAMA', code: 'ADAMA', isActive: true });
+      mockQb.getMany.mockResolvedValue([
+        { ref: 'ADAMA-11', label: 'Gorra', stock: 3 },
+        { ref: 'ADAMA-2', label: ' Polar XL ', stock: 5 },
+        { ref: 'ADAMA-1', label: null, stock: null },
+      ]);
+    });
+
+    it('super_admin sin organización → BadRequest', async () => {
+      await expect(service.exportStockXlsx(superAdminCtx)).rejects.toThrow(BadRequestException);
+    });
+
+    it('super_admin filtra por la organización elegida', async () => {
+      await service.exportStockXlsx(superAdminCtx, 4);
+      expect(mockQb.andWhere).toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 4 });
+    });
+
+    it('usuario cliente usa su propia organización e ignora el parámetro', async () => {
+      await service.exportStockXlsx(clientCtx(3), 4);
+      expect(mockQb.andWhere).toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 3 });
+      expect(mockQb.andWhere).not.toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 4 });
+    });
+
+    it('devuelve xlsx con solo Referencia, Etiqueta y Cantidad, en orden natural', async () => {
+      const { buffer } = await service.exportStockXlsx(superAdminCtx, 4);
+      expect(readRows(buffer)).toEqual([
+        ['Referencia', 'Etiqueta', 'Cantidad'],
+        ['ADAMA-1', '', 0],
+        ['ADAMA-2', 'Polar XL', 5],
+        ['ADAMA-11', 'Gorra', 3],
+      ]);
+    });
+
+    it('arma el nombre de archivo con el código de la organización', async () => {
+      const { filename } = await service.exportStockXlsx(superAdminCtx, 4);
+      expect(filename).toMatch(/^stock-ADAMA-\d{4}-\d{2}-\d{2}\.xlsx$/);
+    });
+  });
+
   describe('getLowStock', () => {
     it('should return products below alert threshold', async () => {
       const result = await service.getLowStock(null);
