@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
@@ -7,6 +7,7 @@ import { Toast } from 'primereact/toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantsApi, type CreateTenantDto } from '../api/tenantsApi';
 import { apiErrMsg } from '../../../shared/utils/apiErrMsg';
+import { buildRefPrefix } from '../../../shared/utils/refPrefix';
 import type { Tenant } from '../../../shared/types';
 
 interface Props {
@@ -28,6 +29,12 @@ export function TenantFormDialog({ visible, onHide, tenant }: Props) {
   const { control, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: { name: '', code: '' },
   });
+
+  // El código define el prefijo de los refs autogenerados de productos (PREFIX-N).
+  const code = useWatch({ control, name: 'code' });
+  const prefix = buildRefPrefix(code);
+  const previousPrefix = isEdit ? buildRefPrefix(tenant?.code ?? '') : '';
+  const prefixChanged = isEdit && !!previousPrefix && !!prefix && prefix !== previousPrefix;
 
   useEffect(() => {
     if (visible) {
@@ -86,13 +93,40 @@ export function TenantFormDialog({ visible, onHide, tenant }: Props) {
             <Controller
               name="code"
               control={control}
-              rules={{ required: 'Requerido' }}
+              rules={{
+                required: 'Requerido',
+                validate: (v) => buildRefPrefix(v) !== '' || 'El código debe tener al menos una letra o un número',
+              }}
               render={({ field }) => (
                 <InputText {...field} className={`w-full ${errors.code ? 'p-invalid' : ''}`} placeholder="Ej: ACME" onChange={(e) => field.onChange(e.target.value.toUpperCase())} />
               )}
             />
             {errors.code && <small className="text-red-500">{errors.code.message}</small>}
-            <small className="text-gray-400">Se usará como código interno único (en mayúsculas)</small>
+            <small className="text-gray-400">Código interno único. También define la referencia de los productos nuevos.</small>
+            {code && prefix && (
+              <div className="text-sm rounded px-3 py-2 border bg-blue-50 border-blue-200 text-blue-800">
+                Referencias de productos nuevos:{' '}
+                {isEdit ? (
+                  <strong className="font-mono whitespace-nowrap">{prefix}-N</strong>
+                ) : (
+                  <>
+                    <strong className="font-mono whitespace-nowrap">{prefix}-1</strong>,{' '}
+                    <strong className="font-mono whitespace-nowrap">{prefix}-2</strong>…
+                  </>
+                )}
+              </div>
+            )}
+            {code && !prefix && (
+              <div className="text-sm rounded px-3 py-2 border bg-red-50 border-red-200 text-red-700">
+                Con este código no se pueden generar referencias automáticas para los productos.
+              </div>
+            )}
+            {prefixChanged && (
+              <div className="text-sm rounded px-3 py-2 border bg-amber-50 border-amber-200 text-amber-800">
+                Los productos que ya existen mantienen su referencia (<span className="font-mono whitespace-nowrap">{previousPrefix}-N</span>).
+                Solo los nuevos van a usar <span className="font-mono whitespace-nowrap">{prefix}-N</span>, y la numeración sigue desde donde iba.
+              </div>
+            )}
           </div>
         </div>
       </Dialog>
