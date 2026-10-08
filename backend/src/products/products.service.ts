@@ -320,7 +320,7 @@ export class ProductsService {
   /**
    * Exporta el stock de UNA organización como .xlsx con solo Referencia, Etiqueta y
    * Cantidad (lo que piden los clientes). Super_admin elige la org; el resto usa la suya.
-   * Incluye productos desactivados: su stock sigue físicamente en el almacén.
+   * Excluye los productos desactivados (status = 0).
    */
   async exportStockXlsx(
     ctx: ProductContext,
@@ -338,6 +338,7 @@ export class ProductsService {
 
     const products = await this.repo.createQueryBuilder('p')
       .andWhere('p.entity = :tenantId', { tenantId: entity })
+      .andWhere('p.status = 1')
       .getMany();
     // Orden natural en memoria (ADAMA-2 < ADAMA-11) — evita el parser de orderBy de TypeORM.
     products.sort((a, b) => a.ref.localeCompare(b.ref, 'es', { numeric: true }));

@@ -292,6 +292,11 @@ describe('ProductsService', () => {
       expect(mockQb.andWhere).not.toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 4 });
     });
 
+    it('excluye los productos desactivados', async () => {
+      await service.exportStockXlsx(superAdminCtx, 4);
+      expect(mockQb.andWhere).toHaveBeenCalledWith('p.status = 1');
+    });
+
     it('devuelve xlsx con solo Referencia, Etiqueta y Cantidad, en orden natural', async () => {
       const { buffer } = await service.exportStockXlsx(superAdminCtx, 4);
       expect(readRows(buffer)).toEqual([
