@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, FindOptionsWhere } from 'typeorm';
+import { Repository, DataSource, EntityManager, FindOptionsWhere } from 'typeorm';
 import { Product } from '../entities/product.entity';
 import { Tenant } from '../entities/tenant.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto, ProductStatsDto } from './dto/filter-product.dto';
+import { buildRef, buildRefPrefix } from './ref-generator';
 
 export class UpdateProductDto extends CreateProductDto {}
 
@@ -68,6 +69,72 @@ export class ProductsService {
     return ctx.tenantId as number;
   }
 
+  /** Devuelve el prefijo de ref (PREFIX) para una organización, a partir de su `code`. */
+  private async resolvePrefix(entity: number): Promise<string> {
+    const tenant = await this.tenantRepo.findOne({ where: { id: entity } });
+    if (!tenant) throw new BadRequestException(`Organización #${entity} no encontrada`);
+    const prefix = buildRefPrefix(tenant.code);
+    if (!prefix) {
+      throw new BadRequestException(`La organización #${entity} no tiene un código válido para generar la referencia`);
+    }
+    return prefix;
+  }
+
+  /**
+   * Reserva atómicamente el siguiente número de la secuencia del tenant y devuelve
+   * el ref `PREFIX-N`. Usa el truco INSERT ... ON DUPLICATE KEY UPDATE + LAST_INSERT_ID
+   * (connection-local, sin race) — mismo patrón que `order_sequences`.
+   * Si un ref manual ya ocupó ese número, avanza hasta el primero libre.
+   */
+  private async reserveNextRef(manager: EntityManager, entity: number, prefix: string): Promise<string> {
+    await manager.query(
+      'INSERT INTO product_ref_sequences (entity, currentSeq) VALUES (?, LAST_INSERT_ID(1)) ' +
+        'ON DUPLICATE KEY UPDATE currentSeq = LAST_INSERT_ID(currentSeq + 1)',
+      [entity],
+    );
+    let rows = await manager.query('SELECT LAST_INSERT_ID() AS seq');
+    let n = Number(rows[0].seq);
+    let ref = buildRef(prefix, n);
+
+    let guard = 0;
+    while (guard++ < 10000 && (await manager.findOne(Product, { where: { ref, entity } }))) {
+      await manager.query(
+        'UPDATE product_ref_sequences SET currentSeq = LAST_INSERT_ID(currentSeq + 1) WHERE entity = ?',
+        [entity],
+      );
+      rows = await manager.query('SELECT LAST_INSERT_ID() AS seq');
+      n = Number(rows[0].seq);
+      ref = buildRef(prefix, n);
+    }
+    return ref;
+  }
+
+  /**
+   * Calcula (sin consumir) el próximo ref `PREFIX-N` para mostrar de preview en el
+   * formulario. Para super_admin requiere `tenantIdParam`; el resto usa su propio tenant.
+   */
+  async peekNextRef(ctx: ProductContext, tenantIdParam?: number): Promise<{ ref: string; prefix: string }> {
+    let entity: number;
+    if (this.isSuperAdmin(ctx)) {
+      if (!tenantIdParam) throw new BadRequestException('Debe seleccionar una organización');
+      await this.assertTenantValid(tenantIdParam);
+      entity = tenantIdParam;
+    } else {
+      entity = ctx.tenantId as number;
+    }
+    const prefix = await this.resolvePrefix(entity);
+    const seqRows = await this.dataSource.query(
+      'SELECT currentSeq FROM product_ref_sequences WHERE entity = ?',
+      [entity],
+    );
+    let n = seqRows.length ? Number(seqRows[0].currentSeq) + 1 : 1;
+    let guard = 0;
+    while (guard++ < 10000 && (await this.repo.findOne({ where: { ref: buildRef(prefix, n), entity } }))) {
+      n++;
+    }
+    return { ref: buildRef(prefix, n), prefix };
+  }
+
   async findAll(filter: FilterProductDto, ctx: ProductContext): Promise<PaginatedProducts> {
     const { search, rubro, subrubro, marca, talle, color, lowStock, tenantId: filterTenantId, page = 1, limit = 50 } = filter;
 
@@ -95,7 +162,18 @@ export class ProductsService {
       qb.andWhere('p.entity = :tenantId', { tenantId: ctx.tenantId });
     }
 
-    qb.skip((page - 1) * limit).take(limit).orderBy('p.ref', 'ASC');
+    // Orden natural del ref: prefijo (alfabético) + número final como entero, para
+    // que ADAMA-2 < ADAMA-11 < ADAMA-20. Las expresiones se exponen con alias
+    // (addSelect) y se ordena por el alias — así TypeORM NO parsea el `p.ref` de
+    // adentro de la función como alias.columna (eso tiraba 500 con take + join).
+    qb.addSelect("REGEXP_REPLACE(p.ref, '-[0-9]+$', '')", 'ref_prefix')
+      .addSelect("CAST(REGEXP_SUBSTR(p.ref, '[0-9]+$') AS UNSIGNED)", 'ref_num');
+
+    qb.skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('ref_prefix', 'ASC')
+      .addOrderBy('ref_num', 'ASC')
+      .addOrderBy('p.ref', 'ASC');
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit };
@@ -119,14 +197,45 @@ export class ProductsService {
 
   async create(dto: CreateProductDto, ctx: ProductContext): Promise<Product> {
     const effectiveEntity = await this.resolveTenantForCreate(ctx, dto.tenantId);
+    const { tenantId: _tenantIdIgnored, autoRef, ref: providedRef, ...rest } = dto;
 
-    const existing = await this.repo.findOne({ where: { ref: dto.ref, entity: effectiveEntity } });
-    if (existing) throw new ConflictException(`Ref '${dto.ref}' ya existe en este tenant`);
+    // Autogeneración: ref = PREFIX-N reservado atómicamente dentro de una transacción.
+    if (autoRef) {
+      const prefix = await this.resolvePrefix(effectiveEntity);
+      const qr = this.dataSource.createQueryRunner();
+      await qr.connect();
+      await qr.startTransaction();
+      try {
+        const ref = await this.reserveNextRef(qr.manager, effectiveEntity, prefix);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const product = qr.manager.create(Product, {
+          ...(rest as any),
+          ref,
+          createdByUserId: ctx.userId ?? null,
+          status: 1,
+          statusBuy: 1,
+          entity: effectiveEntity,
+        } as any);
+        const saved = await qr.manager.save(product);
+        await qr.commitTransaction();
+        return saved;
+      } catch (e) {
+        await qr.rollbackTransaction();
+        throw e;
+      } finally {
+        await qr.release();
+      }
+    }
 
-    const { tenantId: _tenantIdIgnored, ...rest } = dto;
+    // Ref manual (lo edita el usuario): se respeta tal cual, con validación de unicidad.
+    if (!providedRef) throw new BadRequestException('La referencia del producto es obligatoria');
+    const existing = await this.repo.findOne({ where: { ref: providedRef, entity: effectiveEntity } });
+    if (existing) throw new ConflictException(`Ref '${providedRef}' ya existe en este tenant`);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const product = (this.repo.create({
       ...(rest as any),
+      ref: providedRef,
       createdByUserId: ctx.userId ?? null,
       status: 1,
       statusBuy: 1,
@@ -137,16 +246,19 @@ export class ProductsService {
 
   async update(id: number, dto: Partial<UpdateProductDto>, ctx: ProductContext): Promise<Product> {
     const product = await this.findOne(id, ctx);
-    const { tenantId: dtoTenantId, ...rest } = dto;
+    const { tenantId: dtoTenantId, autoRef: _autoRefIgnored, ...rest } = dto;
 
     Object.assign(product, rest);
 
-    if (dtoTenantId !== undefined && this.isSuperAdmin(ctx)) {
+    if (dtoTenantId !== undefined && this.isSuperAdmin(ctx) && dtoTenantId !== product.entity) {
       await this.assertTenantValid(dtoTenantId);
       product.entity = dtoTenantId;
       // Must also update the relation — TypeORM uses `tenant.id` over `entity`
       // when both are set, and `findOne` loaded `tenant` with the old id.
       product.tenant = { id: dtoTenantId } as Tenant;
+      // Decisión: al cambiar la organización, se regenera el ref con el nuevo prefijo.
+      const prefix = await this.resolvePrefix(dtoTenantId);
+      product.ref = await this.reserveNextRef(this.dataSource.manager, dtoTenantId, prefix);
     }
 
     return this.repo.save(product);
@@ -203,6 +315,50 @@ export class ProductsService {
       rows.push(fields.map(q).join(','));
     }
     return rows.join('\n');
+  }
+
+  /**
+   * Exporta el stock de UNA organización como .xlsx con solo Referencia, Etiqueta y
+   * Cantidad (lo que piden los clientes). Super_admin elige la org; el resto usa la suya.
+   * Excluye los productos desactivados (status = 0).
+   */
+  async exportStockXlsx(
+    ctx: ProductContext,
+    tenantIdParam?: number,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    let entity: number;
+    if (this.isSuperAdmin(ctx)) {
+      if (!tenantIdParam) throw new BadRequestException('Debe seleccionar una organización');
+      await this.assertTenantValid(tenantIdParam);
+      entity = tenantIdParam;
+    } else {
+      entity = ctx.tenantId as number;
+    }
+    const tenant = await this.tenantRepo.findOne({ where: { id: entity } });
+
+    const products = await this.repo.createQueryBuilder('p')
+      .andWhere('p.entity = :tenantId', { tenantId: entity })
+      .andWhere('p.status = 1')
+      .getMany();
+    // Orden natural en memoria (ADAMA-2 < ADAMA-11) — evita el parser de orderBy de TypeORM.
+    products.sort((a, b) => a.ref.localeCompare(b.ref, 'es', { numeric: true }));
+
+    const rows: unknown[][] = [
+      ['Referencia', 'Etiqueta', 'Cantidad'],
+      ...products.map((p) => [p.ref, (p.label ?? '').trim(), p.stock ?? 0]),
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const xlsx = require('xlsx') as typeof import('xlsx');
+    const ws = xlsx.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 14 }, { wch: 50 }, { wch: 11 }];
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Stock');
+    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+
+    const code = buildRefPrefix(tenant?.code ?? '') || `ORG-${entity}`;
+    const date = new Date().toISOString().slice(0, 10);
+    return { buffer, filename: `stock-${code}-${date}.xlsx` };
   }
 
   /**

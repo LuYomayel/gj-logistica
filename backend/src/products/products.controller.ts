@@ -54,6 +54,17 @@ export class ProductsController {
     return this.service.getLowStock(user.tenantId);
   }
 
+  @Get('next-ref')
+  @RequiresPermission('products.write')
+  @ApiOperation({ summary: 'Preview del próximo ref autogenerado (PREFIX-N) para una organización' })
+  nextRef(
+    @Query('tenantId') tenantIdQuery: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = tenantIdQuery ? Number(tenantIdQuery) : undefined;
+    return this.service.peekNextRef(this.ctx(user), tenantId);
+  }
+
   @Get('export')
   @RequiresPermission('products.read')
   @ApiOperation({ summary: 'Exportar productos como CSV' })
@@ -66,6 +77,21 @@ export class ProductsController {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="productos.csv"');
     res.send('\uFEFF' + csv);
+  }
+
+  @Get('export-stock')
+  @RequiresPermission('products.read')
+  @ApiOperation({ summary: 'Exportar stock de una organización (Referencia, Etiqueta, Cantidad) como .xlsx' })
+  async exportStockXlsx(
+    @Query('tenantId') tenantIdQuery: string | undefined,
+    @Res() res: Response,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = tenantIdQuery ? Number(tenantIdQuery) : undefined;
+    const { buffer, filename } = await this.service.exportStockXlsx(this.ctx(user), tenantId);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   @Post('import')

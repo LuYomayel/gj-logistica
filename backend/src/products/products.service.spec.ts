@@ -33,6 +33,8 @@ const mockQb = {
   skip: jest.fn().mockReturnThis(),
   take: jest.fn().mockReturnThis(),
   orderBy: jest.fn().mockReturnThis(),
+  addOrderBy: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   leftJoinAndSelect: jest.fn().mockReturnThis(),
   getManyAndCount: jest.fn().mockResolvedValue([[mockProduct], 1]),
@@ -52,8 +54,18 @@ const mockDsQb = {
   getRawMany: jest.fn().mockResolvedValue([]),
 };
 
+const mockManager = {
+  query: jest.fn((sql: string) =>
+    /LAST_INSERT_ID\(\)\s+AS\s+seq/i.test(sql) ? Promise.resolve([{ seq: 1 }]) : Promise.resolve([]),
+  ),
+  findOne: jest.fn().mockResolvedValue(null),
+};
+
 const mockDataSource = {
   createQueryBuilder: jest.fn().mockReturnValue(mockDsQb),
+  query: jest.fn().mockResolvedValue([]),
+  manager: mockManager,
+  createQueryRunner: jest.fn(),
 };
 
 describe('ProductsService', () => {
@@ -218,13 +230,14 @@ describe('ProductsService', () => {
   });
 
   describe('update', () => {
-    it('super_admin can change entity via tenantId', async () => {
+    it('super_admin can change entity via tenantId (y regenera el ref con el prefijo nuevo)', async () => {
       const product = { ...mockProduct, entity: 1 } as Product;
       repo.findOne.mockResolvedValue(product);
       repo.save.mockImplementation(async (x: any) => x);
-
+      // tenant 2 → code 'ORG2' (del beforeEach) → prefijo 'ORG2', secuencia → 1
       const result = await service.update(1, { tenantId: 2 } as any, superAdminCtx);
       expect(result.entity).toBe(2);
+      expect(result.ref).toBe('ORG2-1');
     });
 
     it('super_admin change entity with invalid tenant fails', async () => {
@@ -244,6 +257,59 @@ describe('ProductsService', () => {
       const result = await service.update(1, { tenantId: 99, label: 'X' } as any, clientCtx(1));
       expect(result.entity).toBe(1);
       expect(result.label).toBe('X');
+    });
+  });
+
+  describe('exportStockXlsx', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const xlsx = require('xlsx') as typeof import('xlsx');
+    const readRows = (buffer: Buffer): unknown[][] => {
+      const wb = xlsx.read(buffer, { type: 'buffer' });
+      return xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+    };
+
+    beforeEach(() => {
+      tenantRepo.findOne.mockResolvedValue({ id: 4, name: 'ADAMA', code: 'ADAMA', isActive: true });
+      mockQb.getMany.mockResolvedValue([
+        { ref: 'ADAMA-11', label: 'Gorra', stock: 3 },
+        { ref: 'ADAMA-2', label: ' Polar XL ', stock: 5 },
+        { ref: 'ADAMA-1', label: null, stock: null },
+      ]);
+    });
+
+    it('super_admin sin organización → BadRequest', async () => {
+      await expect(service.exportStockXlsx(superAdminCtx)).rejects.toThrow(BadRequestException);
+    });
+
+    it('super_admin filtra por la organización elegida', async () => {
+      await service.exportStockXlsx(superAdminCtx, 4);
+      expect(mockQb.andWhere).toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 4 });
+    });
+
+    it('usuario cliente usa su propia organización e ignora el parámetro', async () => {
+      await service.exportStockXlsx(clientCtx(3), 4);
+      expect(mockQb.andWhere).toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 3 });
+      expect(mockQb.andWhere).not.toHaveBeenCalledWith('p.entity = :tenantId', { tenantId: 4 });
+    });
+
+    it('excluye los productos desactivados', async () => {
+      await service.exportStockXlsx(superAdminCtx, 4);
+      expect(mockQb.andWhere).toHaveBeenCalledWith('p.status = 1');
+    });
+
+    it('devuelve xlsx con solo Referencia, Etiqueta y Cantidad, en orden natural', async () => {
+      const { buffer } = await service.exportStockXlsx(superAdminCtx, 4);
+      expect(readRows(buffer)).toEqual([
+        ['Referencia', 'Etiqueta', 'Cantidad'],
+        ['ADAMA-1', '', 0],
+        ['ADAMA-2', 'Polar XL', 5],
+        ['ADAMA-11', 'Gorra', 3],
+      ]);
+    });
+
+    it('arma el nombre de archivo con el código de la organización', async () => {
+      const { filename } = await service.exportStockXlsx(superAdminCtx, 4);
+      expect(filename).toMatch(/^stock-ADAMA-\d{4}-\d{2}-\d{2}\.xlsx$/);
     });
   });
 

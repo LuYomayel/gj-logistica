@@ -10,6 +10,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { Dropdown } from 'primereact/dropdown';
 import { productsApi, type ProductFilters } from '../api/productsApi';
 import { CreateProductDialog } from './CreateProductDialog';
+import { ExportStockDialog } from './ExportStockDialog';
 import { AuthImage } from '../../../shared/components/AuthImage';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useTenants, canManageTenants } from '../../../shared/hooks/useTenants';
@@ -26,12 +27,19 @@ export function ProductsTable() {
   const [tenantInput, setTenantInput] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showExportStock, setShowExportStock] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Exporta el stock (Ref, Etiqueta, Cantidad) de UNA organización. Super_admin usa la
+  // organización filtrada; si está en "Todas", la elige en un diálogo. El resto exporta la suya.
   const handleExport = async () => {
+    if (showTenantColumn && !filters.tenantId) {
+      setShowExportStock(true);
+      return;
+    }
     setExporting(true);
-    try { await productsApi.exportCsv(); } finally { setExporting(false); }
+    try { await productsApi.exportStockXlsx(filters.tenantId); } finally { setExporting(false); }
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,6 +101,9 @@ export function ProductsTable() {
         onHide={() => setShowCreate(false)}
         onCreated={(id) => navigate(`/products/${id}`)}
       />
+      {showTenantColumn && (
+        <ExportStockDialog visible={showExportStock} onHide={() => setShowExportStock(false)} />
+      )}
 
       {/* Title */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -120,7 +131,7 @@ export function ProductsTable() {
           )}
           {hasPermission('products.export') && (
             <Button
-              label="Exportar CSV"
+              label="Exportar Excel"
               icon="pi pi-download"
               outlined
               severity="secondary"

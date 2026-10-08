@@ -29,7 +29,7 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
   const activeTenants = tenants.filter((t) => t.isActive || t.id === product.entity);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const { control, handleSubmit, reset, register, formState: { errors } } = useForm<FormValues>({
+  const { control, handleSubmit, reset, register, watch, setValue, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       ref: product.ref,
       label: product.label ?? '',
@@ -61,6 +61,25 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
       setErrorMsg('');
     }
   }, [visible, product, reset]);
+
+  // Decisión: al cambiar la organización se regenera el ref con el prefijo nuevo.
+  // Mostramos el preview; el backend hace la generación autoritativa al guardar.
+  const selectedTenant = watch('tenantId');
+  useEffect(() => {
+    if (!visible || !showTenantSelector || selectedTenant === undefined) return;
+    if (selectedTenant === product.entity) {
+      setValue('ref', product.ref); // volvió a la org original → ref original
+      return;
+    }
+    let cancelled = false;
+    productsApi
+      .nextRef(selectedTenant)
+      .then((res) => { if (!cancelled) setValue('ref', res.ref); })
+      .catch(() => { /* preview best-effort */ });
+    return () => { cancelled = true; };
+  }, [visible, selectedTenant, showTenantSelector, product.entity, product.ref, setValue]);
+
+  const orgChanged = showTenantSelector && selectedTenant !== undefined && selectedTenant !== product.entity;
 
   const mut = useMutation({
     mutationFn: (values: FormValues) => {
@@ -146,6 +165,9 @@ export function EditProductDialog({ visible, onHide, product, onSaved }: Props) 
                 placeholder="Ej: BI000032"
                 className={`w-full ${errors.ref ? 'p-invalid' : ''}`}
               />
+              {orgChanged && !errors.ref && (
+                <small className="text-amber-600">Se regeneró por el cambio de organización — podés editarla</small>
+              )}
               {errors.ref && <small className="text-red-500">{errors.ref.message}</small>}
             </div>
             <div className="flex flex-col gap-1">

@@ -1,16 +1,26 @@
 import {
-  IsString, IsNotEmpty, IsOptional, IsInt, IsNumber,
+  IsString, IsOptional, IsInt, IsNumber, IsBoolean,
   MaxLength, IsDecimal, Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'BI000032' })
+  @ApiPropertyOptional({
+    example: 'BI000032',
+    description: 'Referencia. Opcional si autoRef=true (se genera como PREFIX-N por organización).',
+  })
   @IsString({ message: 'La referencia debe ser texto' })
-  @IsNotEmpty({ message: 'La referencia del producto es obligatoria' })
+  @IsOptional()
   @MaxLength(128, { message: 'La referencia no puede superar los 128 caracteres' })
-  ref: string;
+  ref?: string;
+
+  @ApiPropertyOptional({
+    description: 'Si es true, el backend genera el ref automáticamente (PREFIX-N) e ignora el ref enviado.',
+  })
+  @IsBoolean()
+  @IsOptional()
+  autoRef?: boolean;
 
   @ApiPropertyOptional()
   @IsString({ message: 'El nombre debe ser texto' })
